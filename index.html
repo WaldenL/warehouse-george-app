@@ -89,7 +89,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabase=createClient(
   "https://bvunoupmchywlklchscj.supabase.co",
   "sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH",
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}}
 );
 
 const $=id=>document.getElementById(id);
