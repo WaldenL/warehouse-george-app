@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Warehouse George Authorization</title>
+  <style>
+    :root{
+      color-scheme:dark;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+      --bg:#0f1115;--panel:#191d24;--panel2:#232a35;--border:#374151;
+      --text:#f3f4f6;--muted:#a7afbd;--accent:#d6aa58;--bad:#ff9898;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text)}
+    main{width:min(540px,calc(100% - 32px));padding:28px;border:1px solid var(--border);border-radius:16px;background:var(--panel)}
+    h1{margin:0 0 8px;font-size:1.55rem}
+    p{line-height:1.5}
+    label{display:block;margin-bottom:6px;font-weight:650}
+    input{width:100%;box-sizing:border-box;padding:12px;font:inherit;font-size:16px;margin-bottom:14px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
+    button{padding:11px 16px;min-height:44px;font:inherit;font-weight:650;cursor:pointer;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text);margin-right:8px}
+    button.primary{background:var(--accent);border-color:var(--accent);color:#17120a}
+    button:disabled{opacity:.5;cursor:wait}
+    .muted{color:var(--muted);font-size:.92rem}
+    .error{color:var(--bad);white-space:pre-wrap}
+    #loginPanel,#consentPanel{display:none}
+    ul{padding-left:1.25rem}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Warehouse George</h1>
+
+  <div id="status"><p>Checking authorization request…</p></div>
+
+  <div id="loginPanel">
+    <p>Sign in to authorize ChatGPT to use Warehouse George.</p>
+    <form id="loginForm">
+      <label for="email">Email address</label>
+      <input id="email" type="email" autocomplete="email" required />
+      <button type="submit" id="loginButton" class="primary">Email me a sign-in link</button>
+    </form>
+    <p id="loginMessage" class="muted"></p>
+  </div>
+
+  <div id="consentPanel">
+    <p><strong id="clientName">ChatGPT</strong> is requesting access to Warehouse George.</p>
+
+    <div id="scopeArea">
+      <p>Requested permissions:</p>
+      <ul id="scopes"></ul>
+    </div>
+
+    <p class="muted">
+      Approval allows this client to access Warehouse George using your Supabase identity.
+      Database permissions remain controlled by Warehouse George's row-level security policies.
+    </p>
+
+    <button id="approveButton" class="primary">Approve</button>
+    <button id="denyButton">Deny</button>
+  </div>
+
+  <p id="error" class="error"></p>
+</main>
+
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+  const SUPABASE_URL = "https://bvunoupmchywlklchscj.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH";
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+
+  const status = document.getElementById("status");
+  const loginPanel = document.getElementById("loginPanel");
+  const consentPanel = document.getElementById("consentPanel");
+  const errorBox = document.getElementById("error");
+  const loginForm = document.getElementById("loginForm");
+  const loginButton = document.getElementById("loginButton");
+  const loginMessage = document.getElementById("loginMessage");
+  const clientName = document.getElementById("clientName");
+  const scopesList = document.getElementById("scopes");
+  const approveButton = document.getElementById("approveButton");
+  const denyButton = document.getElementById("denyButton");
+
+  const params = new URLSearchParams(window.location.search);
+  const authorizationId = params.get("authorization_id");
+
+  function showError(message) {
+    errorBox.textContent = message || "Unknown error";
+  }
+
+  function setBusy(isBusy) {
+    approveButton.disabled = isBusy;
+    denyButton.disabled = isBusy;
+  }
+
+  async function initialize() {
+    try {
+      if (!authorizationId) {
+        status.innerHTML = "<p>Missing <code>authorization_id</code>.</p>";
+        showError("This page must be opened by the Supabase OAuth authorization flow.");
+        return;
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError && !userError.message.toLowerCase().includes("session")) {
+        throw userError;
+      }
+
+      if (!user) {
+        status.style.display = "none";
+        loginPanel.style.display = "block";
+        return;
+      }
+
+      await showConsent();
+    } catch (err) {
+      console.error(err);
+      status.style.display = "none";
+      showError(err?.message || String(err));
+    }
+  }
+
+  async function showConsent() {
+    const { data: details, error } =
+      await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+
+    if (error) throw error;
+    if (!details) throw new Error("No authorization details were returned.");
+
+    if (!("authorization_id" in details) && details.redirect_url) {
+      window.location.assign(details.redirect_url);
+      return;
+    }
+
+    status.style.display = "none";
+    loginPanel.style.display = "none";
+    consentPanel.style.display = "block";
+
+    clientName.textContent =
+      details.client_name ||
+      details.client?.name ||
+      details.client_id ||
+      "ChatGPT";
+
+    const scopes = (details.scope || "").split(/\s+/).filter(Boolean);
+    scopesList.innerHTML = "";
+
+    if (!scopes.length) {
+      const li = document.createElement("li");
+      li.textContent = "Warehouse George access";
+      scopesList.appendChild(li);
+    } else {
+      for (const scope of scopes) {
+        const li = document.createElement("li");
+        li.textContent = scope;
+        scopesList.appendChild(li);
+      }
+    }
+  }
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    errorBox.textContent = "";
+    loginMessage.textContent = "";
+
+    const email = document.getElementById("email").value.trim();
+    if (!email) return;
+
+    loginButton.disabled = true;
+
+    try {
+      const redirectUrl = new URL(window.location.href);
+      redirectUrl.hash = "";
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectUrl.toString() }
+      });
+
+      if (error) throw error;
+
+      loginMessage.textContent = "Sign-in link sent. Open the email and return here.";
+    } catch (err) {
+      console.error(err);
+      showError(err?.message || String(err));
+    } finally {
+      loginButton.disabled = false;
+    }
+  });
+
+  approveButton.addEventListener("click", async () => {
+    errorBox.textContent = "";
+    setBusy(true);
+
+    try {
+      const { data, error } =
+        await supabase.auth.oauth.approveAuthorization(authorizationId);
+
+      if (error) throw error;
+      if (!data?.redirect_url) throw new Error("Supabase did not return a redirect URL.");
+
+      window.location.assign(data.redirect_url);
+    } catch (err) {
+      console.error(err);
+      showError(err?.message || String(err));
+      setBusy(false);
+    }
+  });
+
+  denyButton.addEventListener("click", async () => {
+    errorBox.textContent = "";
+    setBusy(true);
+
+    try {
+      const { data, error } =
+        await supabase.auth.oauth.denyAuthorization(authorizationId);
+
+      if (error) throw error;
+      if (!data?.redirect_url) throw new Error("Supabase did not return a redirect URL.");
+
+      window.location.assign(data.redirect_url);
+    } catch (err) {
+      console.error(err);
+      showError(err?.message || String(err));
+      setBusy(false);
+    }
+  });
+
+  initialize();
+</script>
+</body>
+</html>
