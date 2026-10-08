@@ -36,6 +36,11 @@
 
   <div id="loginPanel">
     <p>Sign in to authorize ChatGPT to use Warehouse George.</p>
+    <p class="muted">If you are already signed into the Warehouse app in this same browser, use “Check existing session” first.</p>
+    <p>
+      <button type="button" id="checkSessionButton">Check existing session</button>
+      <a href="./" style="color:#d6aa58">Open Warehouse app</a>
+    </p>
     <form id="loginForm">
       <label for="email">Email address</label>
       <input id="email" type="email" autocomplete="email" required />
@@ -74,7 +79,8 @@
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storageKey: "warehouse-george-auth"
     }
   });
 
@@ -85,6 +91,7 @@
   const loginForm = document.getElementById("loginForm");
   const loginButton = document.getElementById("loginButton");
   const loginMessage = document.getElementById("loginMessage");
+  const checkSessionButton = document.getElementById("checkSessionButton");
   const clientName = document.getElementById("clientName");
   const scopesList = document.getElementById("scopes");
   const approveButton = document.getElementById("approveButton");
@@ -110,13 +117,10 @@
         return;
       }
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
 
-      if (userError && !userError.message.toLowerCase().includes("session")) {
-        throw userError;
-      }
-
-      if (!user) {
+      if (!session?.user) {
         status.style.display = "none";
         loginPanel.style.display = "block";
         return;
@@ -167,6 +171,24 @@
       }
     }
   }
+
+  checkSessionButton.addEventListener("click", async () => {
+    errorBox.textContent = "";
+    loginMessage.textContent = "Checking existing Warehouse session…";
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (!session?.user) {
+        loginMessage.textContent = "No Warehouse session is visible in this browser context.";
+        return;
+      }
+      loginMessage.textContent = "Warehouse session found.";
+      await showConsent();
+    } catch (err) {
+      console.error(err);
+      showError(err?.message || String(err));
+    }
+  });
 
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
