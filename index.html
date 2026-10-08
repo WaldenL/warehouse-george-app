@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Warehouse">
+  <meta name="theme-color" content="#111827">
+  <title>Warehouse George Intake</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color-scheme:dark;--bg:#0f1115;--panel:#191d24;--panel2:#232a35;--border:#374151;--text:#f3f4f6;--muted:#a7afbd;--accent:#d6aa58;--bad:#ff9898;--good:#94d7a7}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:720px;margin:auto;padding:max(20px,env(safe-area-inset-top)) 16px max(30px,env(safe-area-inset-bottom))}h1{margin:0 0 5px;font-size:1.7rem}.sub{margin:0 0 18px;color:var(--muted);line-height:1.4}.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}.field{margin-bottom:16px}.field:last-child{margin-bottom:0}label{display:block;font-weight:650;margin-bottom:7px}input[type=email],input[type=number],textarea,select{width:100%;font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}textarea{min-height:95px;resize:vertical}.hint,.status,.userbar{font-size:.9rem;color:var(--muted);line-height:1.4}.hint{margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap}button,.filebtn{min-height:46px;padding:11px 15px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font:inherit;font-weight:650;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.primary{background:var(--accent);border-color:var(--accent);color:#17120a}.danger{color:var(--bad)}button:disabled{opacity:.5;cursor:wait}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.userbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.hidden{display:none!important}.status{min-height:22px;margin-top:10px}.status.good{color:var(--good)}.status.bad{color:var(--bad)}#photoList{display:grid;gap:10px;margin-top:14px}.photo{display:grid;grid-template-columns:84px minmax(0,1fr);gap:11px;padding:10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)}.thumb{width:84px;height:84px;object-fit:cover;border-radius:9px;background:#080a0d}.meta{min-width:0}.fname{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}.controls{display:grid;grid-template-columns:1fr auto;gap:8px}.remove{min-height:42px;padding:8px 11px}@media(max-width:420px){.photo{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:70px}.controls{grid-template-columns:1fr}.remove{width:100%}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Warehouse George</h1>
+  <p class="sub">Quick bottle intake — shoot the evidence now; let George sort out the archaeology later.</p>
+
+  <section id="loginCard" class="card hidden">
+    <div class="field">
+      <label for="email">Sign in</label>
+      <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+      <div class="hint">A magic sign-in link will be emailed to you.</div>
+    </div>
+    <button id="loginButton" type="button" class="primary">Email sign-in link</button>
+    <div id="loginStatus" class="status"></div>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="userbar"><span id="userEmail"></span><button id="signOut" type="button">Sign out</button></div>
+    <form id="form">
+      <section class="card">
+        <div class="field">
+          <label for="labelNumber">Bottle sticker number <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input id="labelNumber" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 1385">
+          <div class="hint">Leave blank for photos-first intake. Warehouse will create an unlabeled draft bottle.</div>
+        </div>
+        <div class="field">
+          <label for="notes">Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <textarea id="notes" placeholder="Bought at the distillery; box upstairs; handwritten date on back label…"></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <label>Photos</label>
+        <div class="actions">
+          <label class="filebtn" for="camera">📷 Take photo</label>
+          <label class="filebtn" for="library">🖼️ Add from Photos</label>
+        </div>
+        <input id="camera" type="file" accept="image/*" capture="environment">
+        <input id="library" type="file" accept="image/*" multiple>
+        <div class="hint">Add as many as you like. Originals upload directly to private Warehouse storage.</div>
+        <div id="photoList"></div>
+      </section>
+
+      <section class="card">
+        <button id="submit" type="submit" class="primary" style="width:100%">Send to Warehouse</button>
+        <div id="submitStatus" class="status"></div>
+      </section>
+    </form>
+  </section>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const supabase=createClient(
+  "https://bvunoupmchywlklchscj.supabase.co",
+  "sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH",
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+
+const $=id=>document.getElementById(id);
+const loginCard=$("loginCard"),app=$("app"),email=$("email"),loginButton=$("loginButton"),loginStatus=$("loginStatus"),userEmail=$("userEmail"),signOut=$("signOut");
+const form=$("form"),labelNumber=$("labelNumber"),notes=$("notes"),camera=$("camera"),library=$("library"),photoList=$("photoList"),submit=$("submit"),submitStatus=$("submitStatus");
+
+const viewTypes=[["front","Front"],["back","Back"],["left","Left"],["right","Right"],["top","Top"],["bottom","Bottom"],["closure","Closure"],["capsule","Capsule"],["label_detail","Label detail"],["serial","Serial / bottle number"],["packaging","Packaging"],["receipt","Receipt"],["document","Document"],["other","Other"]];
+let photos=[];let activeRecordId=null;let activeLabelNumber=null;
+
+function safeName(n){return (n||"photo.jpg").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120)||"photo.jpg"}
+function sizeLabel(n){return n<1048576?`${Math.max(1,Math.round(n/1024))} KB`:`${(n/1048576).toFixed(1)} MB`}
+function defaultView(i){return i===0?"front":i===1?"back":"other"}
+function addFiles(list){for(const file of Array.from(list||[])){if(!file.type.startsWith("image/"))continue;photos.push({id:crypto.randomUUID(),file,viewType:defaultView(photos.length),url:URL.createObjectURL(file)})}renderPhotos()}
+function removePhoto(id){const p=photos.find(x=>x.id===id);if(p)URL.revokeObjectURL(p.url);photos=photos.filter(x=>x.id!==id);renderPhotos()}
+function renderPhotos(){photoList.innerHTML="";photos.forEach((p,i)=>{const row=document.createElement("div");row.className="photo";const img=document.createElement("img");img.className="thumb";img.src=p.url;img.alt=`Bottle photo ${i+1}`;const meta=document.createElement("div");meta.className="meta";const fn=document.createElement("div");fn.className="fname";fn.textContent=`${p.file.name||"camera photo"} · ${sizeLabel(p.file.size)}`;const controls=document.createElement("div");controls.className="controls";const sel=document.createElement("select");for(const [v,l] of viewTypes){const o=document.createElement("option");o.value=v;o.textContent=l;o.selected=v===p.viewType;sel.appendChild(o)}sel.addEventListener("change",()=>p.viewType=sel.value);const rm=document.createElement("button");rm.type="button";rm.className="remove danger";rm.textContent="Remove";rm.addEventListener("click",()=>removePhoto(p.id));controls.append(sel,rm);meta.append(fn,controls);row.append(img,meta);photoList.append(row)})}
+
+async function refreshAuth(){const {data:{session}}=await supabase.auth.getSession();if(session?.user){loginCard.classList.add("hidden");app.classList.remove("hidden");userEmail.textContent=session.user.email||"Signed in"}else{app.classList.add("hidden");loginCard.classList.remove("hidden")}}
+
+loginButton.addEventListener("click",async()=>{const addr=email.value.trim();if(!addr){loginStatus.textContent="Enter your email address.";loginStatus.className="status bad";return}loginButton.disabled=true;loginStatus.textContent="Sending sign-in link…";loginStatus.className="status";const redirectTo=location.origin+location.pathname;const {error}=await supabase.auth.signInWithOtp({email:addr,options:{emailRedirectTo:redirectTo}});loginButton.disabled=false;if(error){loginStatus.textContent=error.message;loginStatus.className="status bad"}else{loginStatus.textContent="Check your email for the sign-in link.";loginStatus.className="status good"}});
+signOut.addEventListener("click",async()=>{await supabase.auth.signOut();await refreshAuth()});
+camera.addEventListener("change",()=>{addFiles(camera.files);camera.value=""});
+library.addEventListener("change",()=>{addFiles(library.files);library.value=""});
+
+form.addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!photos.length){submitStatus.textContent="Add at least one photo.";submitStatus.className="status bad";return}
+  const raw=labelNumber.value.trim();const label=raw?Number(raw):null;const note=notes.value.trim()||null;
+  if(label!==null&&(!Number.isInteger(label)||label<=0)){submitStatus.textContent="Sticker number must be a positive whole number.";submitStatus.className="status bad";return}
+  submit.disabled=true;submitStatus.className="status";
+  try{
+    if(!activeRecordId||activeLabelNumber!==label){submitStatus.textContent="Resolving bottle record…";const {data,error}=await supabase.rpc("warehouse_intake_bottle",{p_label_number:label,p_notes:note});if(error)throw error;activeRecordId=data.record_id;activeLabelNumber=data.label_number??null}
+    const queue=[...photos];let done=0;
+    for(const p of queue){submitStatus.textContent=`Uploading ${done+1} of ${queue.length}…`;const path=activeRecordId+"/"+crypto.randomUUID()+"-"+safeName(p.file.name);const {error:upErr}=await supabase.storage.from("warehouse-media").upload(path,p.file,{contentType:p.file.type||"application/octet-stream",upsert:false});if(upErr)throw upErr;const captured=p.file.lastModified?new Date(p.file.lastModified).toISOString():new Date().toISOString();const {error:mErr}=await supabase.from("media").insert({bottle_id:activeRecordId,object_path:path,media_type:"photo",view_type:p.viewType,original_filename:p.file.name||"camera-photo",mime_type:p.file.type||"application/octet-stream",captured_at:captured});if(mErr){await supabase.storage.from("warehouse-media").remove([path]);throw mErr}done++;removePhoto(p.id)}
+    submitStatus.textContent=(activeLabelNumber?`Bottle ${activeLabelNumber}`:"Unlabeled draft bottle")+` saved with ${done} photo${done===1?"":"s"}.`;submitStatus.className="status good";labelNumber.value="";notes.value="";activeRecordId=null;activeLabelNumber=null;
+  }catch(err){console.error(err);submitStatus.textContent=`Upload stopped: ${err?.message||String(err)}.`+(activeRecordId?` Draft record: ${activeRecordId}. Remaining photos are still queued; tap Send to Warehouse to retry.`:"");submitStatus.className="status bad"}finally{submit.disabled=false}
+});
+
+supabase.auth.onAuthStateChange(()=>refreshAuth());
+await refreshAuth();
+</script>
+</body>
+</html>
