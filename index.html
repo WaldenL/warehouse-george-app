@@ -37,6 +37,13 @@
       <button type="button" class="tab" data-view="inventoryView">Inventory <span id="inventoryCount" class="count"></span></button>
     </nav>
     <section id="intakeView" class="view active">
+      <section class="card">
+        <h2 style="margin-top:0;font-size:1.1rem">Image API connectivity test</h2>
+        <div class="hint" style="margin:0 0 12px">Read-only test of Southern Collective's front photograph using the OpenAI API. No Warehouse changes.</div>
+        <button type="button" id="runVisionTest">Test image recognition</button>
+        <div id="visionTestStatus" class="status"></div>
+        <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
+      </section>
     <form id="form">
       <section class="card">
         <div class="field">
@@ -153,6 +160,19 @@ tabs.forEach(function(t){t.addEventListener("click",function(){switchView(t.data
 refreshInbox.addEventListener("click",loadWarehouseLists);
 refreshInventory.addEventListener("click",loadWarehouseLists);
 
+$("runVisionTest").addEventListener("click",async()=>{
+  const button=$("runVisionTest"),status=$("visionTestStatus"),out=$("visionTestResults");
+  button.disabled=true;status.textContent="Testing OpenAI image recognition…";out.textContent="";
+  try {
+    const {data,error}=await supabase.functions.invoke("warehouse-vision-test",{method:"POST",body:{}});
+    if(error)throw error;
+    out.textContent=JSON.stringify(data,null,2);
+    status.textContent=data.success?"Image recognition succeeded.":"The test returned an error.";
+    status.className="status "+(data.success?"good":"bad");
+  } catch(e) {
+    status.textContent=e?.message||String(e);status.className="status bad";
+  } finally {button.disabled=false;}
+});
 const viewTypes=[["front","Front"],["back","Back"],["left","Left"],["right","Right"],["top","Top"],["bottom","Bottom"],["closure","Closure"],["capsule","Capsule"],["label_detail","Label detail"],["serial","Serial / bottle number"],["packaging","Packaging"],["receipt","Receipt"],["document","Document"],["other","Other"]];
 let photos=[];let activeRecordId=null;let activeLabelNumber=null;
 
