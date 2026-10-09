@@ -44,6 +44,18 @@
         <div id="visionTestStatus" class="status"></div>
         <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
       </section>
+    <section class="card">
+      <h2 style="margin-top:0;font-size:1.1rem">Image Variants Test</h2>
+      <div class="hint">Store one original, byte-for-byte unchanged, plus three independent JPEG derivatives (2048, 1024, and 256 px maximum longest side), all in real Warehouse storage.</div>
+      <div class="actions" style="margin-top:12px">
+        <label class="filebtn" for="variantImage">Choose image</label>
+        <button type="button" id="uploadVariants" class="primary" disabled>Upload four versions</button>
+      </div>
+      <input id="variantImage" type="file" accept="image/*">
+      <div id="variantSelected" class="hint">No image selected.</div>
+      <div id="variantStatus" class="status"></div>
+      <pre id="variantResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre>
+    </section>
     <form id="form">
       <section class="card">
         <div class="field">
@@ -118,6 +130,25 @@ const supabase=createClient(
   {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}}
 );
 
+async function makeJpegVariant(file, maxDimension) {
+  const bitmap=await createImageBitmap(file,{imageOrientation:"from-image"});
+  try {
+    const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
+    const width=Math.max(1,Math.round(bitmap.width*scale));
+    const height=Math.max(1,Math.round(bitmap.height*scale));
+    const canvas=document.createElement("canvas");
+    canvas.width=width;canvas.height=height;
+    const context=canvas.getContext("2d");
+    if(!context)throw new Error("Canvas unavailable.");
+    context.fillStyle="#ffffff";
+    context.fillRect(0,0,width,height);
+    context.imageSmoothingEnabled=true;
+    context.imageSmoothingQuality="high";
+    context.drawImage(bitmap,0,0,width,height);
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("JPEG encoding failed")),"image/jpeg",0.88));
+    return {blob,width,height,maxDimension};
+  } finally {bitmap.close();}
+}
 const $=id=>document.getElementById(id);
 const loginCard=$("loginCard"),app=$("app"),email=$("email"),loginButton=$("loginButton"),loginStatus=$("loginStatus"),userEmail=$("userEmail"),signOut=$("signOut");
 const form=$("form"),labelNumber=$("labelNumber"),notes=$("notes"),camera=$("camera"),library=$("library"),photoList=$("photoList"),submit=$("submit"),submitStatus=$("submitStatus");
@@ -194,6 +225,66 @@ async function refreshAuth(){const {data:{session}}=await supabase.auth.getSessi
 
 loginButton.addEventListener("click",async()=>{const addr=email.value.trim();if(!addr){loginStatus.textContent="Enter your email address.";loginStatus.className="status bad";return}loginButton.disabled=true;loginStatus.textContent="Sending sign-in link…";loginStatus.className="status";const redirectTo=location.origin+location.pathname;const {error}=await supabase.auth.signInWithOtp({email:addr,options:{emailRedirectTo:redirectTo}});loginButton.disabled=false;if(error){loginStatus.textContent=error.message;loginStatus.className="status bad"}else{loginStatus.textContent="Check your email for the sign-in link.";loginStatus.className="status good"}});
 signOut.addEventListener("click",async()=>{await supabase.auth.signOut();await refreshAuth()});
+const variantImage=$("variantImage"),uploadVariants=$("uploadVariants"),variantSelected=$("variantSelected"),variantStatus=$("variantStatus"),variantResults=$("variantResults");
+variantImage.addEventListener("change",()=>{
+  const file=variantImage.files?.[0];
+  variantSelected.textContent=file?file.name+" · "+sizeLabel(file.size)+" · "+(file.type||"unknown MIME"):"No image selected.";
+  uploadVariants.disabled=!file;
+  variantResults.textContent="";
+});
+uploadVariants.addEventListener("click",async()=>{
+  const file=variantImage.files?.[0];
+  if(!file)return;
+  uploadVariants.disabled=true;
+  const results=[];
+  let bottleId=null;
+  const batchId=crypto.randomUUID();
+  try {
+    if(!file.type.startsWith("image/"))throw new Error("Please select an image.");
+    variantStatus.textContent="Creating independent JPEGs from original…";
+    const sizes=[2048,1024,256];
+    const derivatives=[];
+    for(const limit of sizes)derivatives.push(await makeJpegVariant(file,limit));
+    // Test bottle deliberately labelled in the record, never reuses a real collection bottle.
+    const testData={schema_version:1,inventory_domain:"Test / non-collection",
+      identity:{brand:"Warehouse Image Test",product_name:"Image variant experiment"},
+      notes:"Technical media experiment; not a physical collection bottle. Image batch "+batchId,
+      attributes:{warehouse_test:{kind:"image_variants",batch_id:batchId,source_filename:file.name}}};
+    const {data:bottle,error:be}=await supabase.from("bottles").insert({data:testData}).select("id").single();
+    if(be)throw be;
+    bottleId=bottle.id;
+    const files=[{kind:"original",blob:file,name:file.name,mime:file.type||"application/octet-stream",size:file.size},
+      ...derivatives.map(d=>({kind:"jpeg_"+d.maxDimension,blob:d.blob,name:"variant-"+d.maxDimension+".jpg",
+        mime:"image/jpeg",size:d.blob.size,width:d.width,height:d.height}))];
+    for(const item of files) {
+      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/4)…";
+      const path=bottleId+"/"+batchId+"/"+item.kind+"/"+(item.kind==="original"?encodeURIComponent(file.name||"image"):item.name);
+      const {error:ue}=await supabase.storage.from("warehouse-media").upload(path,item.blob,
+        {contentType:item.mime,upsert:false,cacheControl:"3600"});
+      if(ue)throw ue;
+      const note=JSON.stringify({test:"image_variants",batch_id:batchId,kind:item.kind,
+        max_dimension:item.kind==="original"?null:Number(item.kind.slice(5)),
+        pixel_width:item.width??null,pixel_height:item.height??null,source:"independent_original"});
+      const {error:me}=await supabase.from("media").insert({
+        bottle_id:bottleId,object_path:path,media_type:"photo",view_type:"other",
+        original_filename:item.name,mime_type:item.mime,notes:note,
+        captured_at:file.lastModified?new Date(file.lastModified).toISOString():new Date().toISOString()
+      });
+      if(me)throw me;
+      results.push({kind:item.kind,bytes:item.size,width:item.width??null,height:item.height??null,path});
+      variantResults.textContent=JSON.stringify({bottle_id:bottleId,batch_id:batchId,files:results},null,2);
+    }
+    variantStatus.textContent="Success: original + three JPEG variants stored in Warehouse.";
+    variantStatus.className="status good";
+    variantImage.value="";
+    variantSelected.textContent="No image selected.";
+    await loadWarehouseLists();
+  } catch(error) {
+    variantStatus.textContent="Upload incomplete: "+(error?.message||String(error))+
+      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 4 files saved.":"");
+    variantStatus.className="status bad";
+  } finally {uploadVariants.disabled=!variantImage.files?.length;}
+});
 camera.addEventListener("change",()=>{addFiles(camera.files);camera.value=""});
 library.addEventListener("change",()=>{addFiles(library.files);library.value=""});
 
