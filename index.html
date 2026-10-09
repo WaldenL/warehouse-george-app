@@ -45,6 +45,13 @@
         <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
       </section>
     <section class="card">
+      <h2 style="margin-top:0;font-size:1.1rem">Stored image EXIF inspection</h2>
+      <div class="hint">Downloads all four stored images through your authenticated session and reads embedded camera/EXIF/GPS metadata. Read-only.</div>
+      <button type="button" id="inspectExif" style="margin-top:12px">Inspect EXIF for all four</button>
+      <div id="exifStatus" class="status"></div>
+      <pre id="exifResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre>
+    </section>
+    <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Image Variants Test</h2>
       <div class="hint">Store one original, byte-for-byte unchanged, plus three independent JPEG derivatives (2048, 1024, and 256 px maximum longest side), all in real Warehouse storage.</div>
       <div class="actions" style="margin-top:12px">
@@ -225,6 +232,46 @@ async function refreshAuth(){const {data:{session}}=await supabase.auth.getSessi
 
 loginButton.addEventListener("click",async()=>{const addr=email.value.trim();if(!addr){loginStatus.textContent="Enter your email address.";loginStatus.className="status bad";return}loginButton.disabled=true;loginStatus.textContent="Sending sign-in link…";loginStatus.className="status";const redirectTo=location.origin+location.pathname;const {error}=await supabase.auth.signInWithOtp({email:addr,options:{emailRedirectTo:redirectTo}});loginButton.disabled=false;if(error){loginStatus.textContent=error.message;loginStatus.className="status bad"}else{loginStatus.textContent="Check your email for the sign-in link.";loginStatus.className="status good"}});
 signOut.addEventListener("click",async()=>{await supabase.auth.signOut();await refreshAuth()});
+$("inspectExif").addEventListener("click",async()=>{
+  const btn=$("inspectExif"),status=$("exifStatus"),out=$("exifResults");
+  btn.disabled=true;out.textContent="";status.textContent="Loading EXIF parser…";status.className="status";
+  try {
+    const exifr=await import("https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.esm.mjs");
+    const {data:bottles,error:be}=await supabase.from("bottles").select("id,created_at,data")
+      .eq("data->attributes->warehouse_test->>kind","image_variants").order("created_at",{ascending:false}).limit(1);
+    if(be)throw be;
+    const bottle=bottles?.[0];if(!bottle)throw new Error("No image-variants test batch exists.");
+    const batchId=bottle.data?.attributes?.warehouse_test?.batch_id;
+    const {data:media,error:me}=await supabase.from("media").select("object_path,notes,original_filename").eq("bottle_id",bottle.id);
+    if(me)throw me;
+    const map=new Map();
+    for(const m of media||[]){
+      try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
+    }
+    const results=[];
+    for(const version of ["original","jpeg_2048","jpeg_1024","jpeg_256"]){
+      const m=map.get(version);
+      if(!m){results.push({version,error:"Missing stored variant"});continue;}
+      status.textContent="Inspecting "+version+"…";
+      try {
+        const {data:file,error:de}=await supabase.storage.from("warehouse-media").download(m.object_path);
+        if(de)throw de;
+        const metadata=(await exifr.parse(await file.arrayBuffer(),{tiff:true,exif:true,gps:true,iptc:true,xmp:true,icc:true}))||{};
+        const tags=JSON.parse(JSON.stringify(metadata,(_k,v)=>{
+          if(typeof v==="bigint")return String(v);
+          if(v instanceof Uint8Array||v instanceof ArrayBuffer)return "[binary]";
+          if(typeof v==="string"&&v.length>1000)return v.slice(0,1000)+"…";
+          return v;
+        }));
+        results.push({version,filename:m.original_filename,stored_bytes:file.size,tag_count:Object.keys(tags).length,tags});
+      }catch(e){results.push({version,error:e.message||String(e)});}
+      out.textContent=JSON.stringify({bottle_id:bottle.id,batch_id:batchId,cases:results},null,2);
+    }
+    status.textContent="EXIF inspection finished. Original files unchanged.";
+    status.className="status good";
+  }catch(e){status.textContent="EXIF test failed: "+(e.message||String(e));status.className="status bad"}
+  finally{btn.disabled=false;}
+});
 const variantImage=$("variantImage"),uploadVariants=$("uploadVariants"),variantSelected=$("variantSelected"),variantStatus=$("variantStatus"),variantResults=$("variantResults");
 variantImage.addEventListener("change",()=>{
   const file=variantImage.files?.[0];
