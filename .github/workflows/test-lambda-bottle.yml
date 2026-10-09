@@ -1,0 +1,55 @@
+name: Test one Warehouse bottle in Lambda
+
+on:
+  workflow_dispatch:
+    inputs:
+      processing_run_id:
+        description: "Existing queued Supabase processing-run UUID"
+        required: true
+        type: string
+        default: "1e27a48b-dd4f-429f-805a-2c1a86865a02"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: warehouse-lambda-bottle-test
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Authenticate to AWS Ohio
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::774281695493:role/WarehouseGeorgeGitHubDeployRole
+          aws-region: us-east-2
+
+      - name: Invoke Lambda for exactly one processing run
+        env:
+          RUN_ID: ${{ inputs.processing_run_id }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$RUN_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            echo "Invalid processing run UUID"; exit 2
+          fi
+          printf '{"processing_run_id":"%s"}' "$RUN_ID" > request.json
+          aws lambda invoke \
+            --function-name warehouse-george-worker \
+            --cli-binary-format raw-in-base64-out \
+            --payload fileb://request.json \
+            --region us-east-2 \
+            --cli-read-timeout 910 \
+            response.json > invoke-metadata.json
+          python3 - <<'PY'
+          import json
+          meta=json.load(open("invoke-metadata.json"))
+          data=json.load(open("response.json"))
+          print("Invocation metadata:", json.dumps(meta))
+          print("Worker result:", json.dumps(data, indent=2))
+          if meta.get("FunctionError") or data.get("status")!="completed":
+              raise SystemExit("Bottle processing did not complete successfully")
+          PY
