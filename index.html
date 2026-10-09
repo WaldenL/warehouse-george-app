@@ -60,10 +60,10 @@
     </section>
     <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Image Variants Test</h2>
-      <div class="hint">Store the original unchanged plus eight independent JPEG variants: 1600 px at 99/95/90%, 512 px at 99/95/90%, and 128 px at 99/95%.</div>
+      <div class="hint">Store the untouched original plus six independent JPEGs: full resolution at 50% and 20%, 1600 px at 50% and 20%, 256 px at 100% and 50%.</div>
       <div class="actions" style="margin-top:12px">
         <label class="filebtn" for="variantImage">Choose image</label>
-        <button type="button" id="uploadVariants" class="primary" disabled>Upload nine versions</button>
+        <button type="button" id="uploadVariants" class="primary" disabled>Upload seven versions</button>
       </div>
       <input id="variantImage" type="file" accept="image/*">
       <div id="variantSelected" class="hint">No image selected.</div>
@@ -147,7 +147,7 @@ const supabase=createClient(
 async function makeJpegVariant(file, maxDimension, quality) {
   const bitmap=await createImageBitmap(file,{imageOrientation:"from-image"});
   try {
-    const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
+    const scale=maxDimension===null?1:Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
     const width=Math.max(1,Math.round(bitmap.width*scale));
     const height=Math.max(1,Math.round(bitmap.height*scale));
     const canvas=document.createElement("canvas");
@@ -260,11 +260,11 @@ $("loadVariants").addEventListener("click",async()=>{
     }
     let loaded=0;
     const kinds=["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>{
-  const get=k=>{const m=k.match(/^jpeg_(\d+)(?:_q(\d+))?$/);return m?[Number(m[1]),Number(m[2]||0)]:[0,0]};
+  const get=k=>{const m=k.match(/^jpeg_(full|\d+)(?:_q(\d+))?$/);return m?[m[1]==="full"?999999:Number(m[1]),Number(m[2]||0)]:[0,0]};
   const x=get(a),y=get(b);return y[0]-x[0]||y[1]-x[1];
 })];
     for(const kind of kinds){
-      const title=kind==="original"?"Original":kind.replace(/^jpeg_(\d+)_q(\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\d+)$/,"$1 px");
+      const title=kind==="original"?"Original":kind.replace(/^jpeg_full_q(\d+)$/,"Full size · $1% JPEG").replace(/^jpeg_(\d+)_q(\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\d+)$/,"$1 px");
       const card=document.createElement("div");
       card.style.cssText="padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-width:0";
       const name=document.createElement("div");name.textContent=title;name.style.cssText="font-weight:700;margin-bottom:8px";
@@ -354,7 +354,7 @@ uploadVariants.addEventListener("click",async()=>{
   try {
     if(!file.type.startsWith("image/"))throw new Error("Please select an image.");
     variantStatus.textContent="Creating independent JPEGs from original…";
-    const specs=[[1600,99],[1600,95],[1600,90],[512,99],[512,95],[512,90],[128,99],[128,95]];
+    const specs=[[null,50],[null,20],[1600,50],[1600,20],[256,100],[256,50]];
     const derivatives=[];
     for(const [limit,quality] of specs)derivatives.push(await makeJpegVariant(file,limit,quality));
     // Test bottle deliberately labelled in the record, never reuses a real collection bottle.
@@ -366,7 +366,7 @@ uploadVariants.addEventListener("click",async()=>{
     if(be)throw be;
     bottleId=bottle.id;
     const files=[{kind:"original",blob:file,name:file.name,mime:file.type||"application/octet-stream",size:file.size},
-      ...derivatives.map(d=>({kind:"jpeg_"+d.maxDimension+"_q"+d.quality,blob:d.blob,name:"variant-"+d.maxDimension+"-q"+d.quality+".jpg",
+      ...derivatives.map(d=>({kind:"jpeg_"+(d.maxDimension===null?"full":d.maxDimension)+"_q"+d.quality,blob:d.blob,name:"variant-"+(d.maxDimension===null?"full":d.maxDimension)+"-q"+d.quality+".jpg",
         mime:"image/jpeg",size:d.blob.size,width:d.width,height:d.height}))];
     for(const item of files) {
       variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/"+files.length+")…";
@@ -375,7 +375,7 @@ uploadVariants.addEventListener("click",async()=>{
         {contentType:item.mime,upsert:false,cacheControl:"3600"});
       if(ue)throw ue;
       const note=JSON.stringify({test:"image_variants",batch_id:batchId,kind:item.kind,
-        max_dimension:item.kind==="original"?null:Number(item.kind.match(/^jpeg_(\d+)/)?.[1]||0),
+        max_dimension:item.kind==="original"||item.kind.startsWith("jpeg_full")?null:Number(item.kind.match(/^jpeg_(\d+)/)?.[1]||0),
         jpeg_quality:item.kind==="original"?null:Number(item.kind.match(/_q(\d+)$/)?.[1]||0),
         pixel_width:item.width??null,pixel_height:item.height??null,source:"independent_original"});
       const {error:me}=await supabase.from("media").insert({
@@ -387,14 +387,14 @@ uploadVariants.addEventListener("click",async()=>{
       results.push({kind:item.kind,bytes:item.size,width:item.width??null,height:item.height??null,path});
       variantResults.textContent=JSON.stringify({bottle_id:bottleId,batch_id:batchId,files:results},null,2);
     }
-    variantStatus.textContent="Success: original + eight JPEG variants stored in Warehouse.";
+    variantStatus.textContent="Success: original + six JPEG variants stored in Warehouse.";
     variantStatus.className="status good";
     variantImage.value="";
     variantSelected.textContent="No image selected.";
     await loadWarehouseLists();
   } catch(error) {
     variantStatus.textContent="Upload incomplete: "+(error?.message||String(error))+
-      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 9 files saved.":"");
+      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 7 files saved.":"");
     variantStatus.className="status bad";
   } finally {uploadVariants.disabled=!variantImage.files?.length;}
 });
