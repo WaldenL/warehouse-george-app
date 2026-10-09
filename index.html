@@ -38,9 +38,9 @@
     </nav>
     <section id="intakeView" class="view active">
       <section class="card">
-        <h2 style="margin-top:0;font-size:1.1rem">OpenAI image resolution comparison</h2>
-        <div class="hint" style="margin:0 0 12px">Compares the latest uploaded original, 2048, 1024 and 256 px JPEG using four separate, identical OpenAI vision prompts. Shows observations, latency, tokens and estimated cost. No Warehouse changes.</div>
-        <button type="button" id="runVisionTest">Compare four image sizes</button>
+        <h2 style="margin-top:0;font-size:1.1rem">OpenAI image variant comparison</h2>
+        <div class="hint" style="margin:0 0 12px">Compares every image in the latest test batch using identical OpenAI vision prompts (one API request per image). Reports observations, latency, tokens and estimated cost. Existing four-image batches remain supported.</div>
+        <button type="button" id="runVisionTest">Compare stored image variants</button>
         <div id="visionTestStatus" class="status"></div>
         <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
       </section>
@@ -207,7 +207,7 @@ refreshInventory.addEventListener("click",loadWarehouseLists);
 
 $("runVisionTest").addEventListener("click",async()=>{
   const button=$("runVisionTest"),status=$("visionTestStatus"),out=$("visionTestResults");
-  button.disabled=true;status.textContent="Running four sequential OpenAI image inspections…";out.textContent="";
+  button.disabled=true;status.textContent="Running separate OpenAI inspections for the stored image variants…";out.textContent="";
   try {
     const {data,error}=await supabase.functions.invoke("warehouse-vision-test",{method:"POST",body:{}});
     if(error){
@@ -219,7 +219,7 @@ $("runVisionTest").addEventListener("click",async()=>{
       return;
     }
     out.textContent=JSON.stringify(data,null,2);
-    status.textContent=data.success?"All four image inspections completed.":(data.cases?.length?"Comparison completed with one or more failed requests.":"The test returned an error.");
+    status.textContent=data.success?"All image inspections completed.":(data.cases?.length?"Comparison completed with one or more failed requests.":"The test returned an error.");
     status.className="status "+(data.success?"good":"bad");
   } catch(e) {
     status.textContent=e?.message||String(e);status.className="status bad";
