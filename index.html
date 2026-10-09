@@ -47,7 +47,7 @@
       <div class="hint">If automatic segmentation is unavailable, the test continues with crop and exposure corrections and clearly reports the fallback.</div>
       <div id="pipelineStatus" class="status"></div><div class="actions" style="margin-top:8px"><button type="button" id="pipelineRecover">Recover completed run</button><input type="text" id="pipelineRecoverId" placeholder="Run ID to recover" aria-label="Run ID to recover" style="flex:1;min-width:170px"></div>
       <div id="pipelineImages" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-top:12px"></div>
-      <h3>Estimated processing cost</h3><div id="pipelineCost" class="item"><span class="hint">Shown after a completed run.</span></div><h3>Consolidated extraction</h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
+      <h3>Estimated processing cost</h3><div id="pipelineCost" class="item"><span class="hint">Shown after a completed run.</span></div><h3>Consolidated extraction <span id="pipelineSchema" class="badge">Schema pending</span></h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
       <h3>Primary-photo thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
       <details style="margin-top:12px"><summary>Technical results, paths and processing notes</summary><pre id="pipelineTechnical" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre></details>
     </section>
@@ -414,7 +414,7 @@ uploadVariants.addEventListener("click",async()=>{
   } finally {uploadVariants.disabled=!variantImage.files?.length;}
 });
 
-const recoverBtn=$("pipelineRecover"),recoverId=$("pipelineRecoverId"),pc=$("pipelineCost"),pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
+const psv=$("pipelineSchema"),recoverBtn=$("pipelineRecover"),recoverId=$("pipelineRecoverId"),pc=$("pipelineCost"),pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
 pf.addEventListener("change",()=>{
  const selected=[...(pf.files||[])];pp.replaceChildren();
  selected.forEach((f,i)=>{const o=document.createElement("option");o.value=String(i);o.textContent=(i+1)+". "+f.name;pp.append(o)});
@@ -529,6 +529,7 @@ async function recoverPipelineRun(){
 }
 recoverBtn.addEventListener("click",recoverPipelineRun);
 function showPipelineResult(result,runId,technical){
+ psv.textContent=result.schema_version||result.extraction?.schema_version||"Legacy unversioned extraction";
  pe.textContent=result.extraction?JSON.stringify(result.extraction,null,2):result.raw_extraction;
   const usd=Number(result.cost?.estimated_total_usd??0);
   const fmt=n=>"$"+Number(n).toFixed(6);
@@ -540,7 +541,7 @@ function showPipelineResult(result,runId,technical){
    pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="Directly derived bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
    const note=document.createElement("p");note.className="hint";note.textContent="Public, versioned thumbnail · "+result.thumbnail.bytes+" bytes · "+result.thumbnail.url;pt.append(note);
   }else{pt.textContent="Thumbnail: "+(result.thumbnail?.error||result.thumbnail?.status||"not available")+". Extraction remains available."}
-  px.textContent=JSON.stringify({run_id:runId,photos:technical,model:result.model,usage:result.usage,cost:result.cost,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
+  px.textContent=JSON.stringify({run_id:runId,schema_version:result.schema_version||null,photos:technical,model:result.model,usage:result.usage,cost:result.cost,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
 }
 
 
