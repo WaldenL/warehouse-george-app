@@ -369,7 +369,7 @@ uploadVariants.addEventListener("click",async()=>{
       ...derivatives.map(d=>({kind:"jpeg_"+d.maxDimension+"_q"+d.quality,blob:d.blob,name:"variant-"+d.maxDimension+"-q"+d.quality+".jpg",
         mime:"image/jpeg",size:d.blob.size,width:d.width,height:d.height}))];
     for(const item of files) {
-      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/"+files.length)…";
+      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/"+files.length+")…";
       const path=bottleId+"/"+batchId+"/"+item.kind+"/"+(item.kind==="original"?encodeURIComponent(file.name||"image"):item.name);
       const {error:ue}=await supabase.storage.from("warehouse-media").upload(path,item.blob,
         {contentType:item.mime,upsert:false,cacheControl:"3600"});
