@@ -430,13 +430,13 @@ function pipelineCard(label,blob,detail){
  article.append(name,img,meta);pi.append(article);
 }
 async function cleanedPhoto(file,removeBackground){
- let input=file,mode="crop, orientation, gentle exposure adjustment; original pixels retained";
+ let input=file,mode="orientation + gentle exposure adjustment (background retained)";
  if(removeBackground){
   try{
    const library=await import("https://esm.sh/@imgly/background-removal@1.7.0");
    input=await library.removeBackground(file,{progress:()=>{}});
    mode="non-generative segmentation + crop + gentle exposure correction";
-  }catch(err){mode="Segmentation unavailable ("+(err?.message||String(err))+"); crop + gentle exposure only";}
+  }catch(err){mode="Segmentation unavailable ("+(err?.message||String(err))+"); orientation + exposure only";}
  }
  const image=await createImageBitmap(input,{imageOrientation:"from-image"});
  try{
