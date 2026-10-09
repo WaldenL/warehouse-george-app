@@ -165,7 +165,14 @@ $("runVisionTest").addEventListener("click",async()=>{
   button.disabled=true;status.textContent="Testing OpenAI image recognition…";out.textContent="";
   try {
     const {data,error}=await supabase.functions.invoke("warehouse-vision-test",{method:"POST",body:{}});
-    if(error)throw error;
+    if(error){
+      let details=null;
+      try { if(error.context && typeof error.context.json==="function") details=await error.context.json(); } catch(_){}
+      out.textContent=JSON.stringify(details??{message:error.message},null,2);
+      status.textContent="The test returned an error.";
+      status.className="status bad";
+      return;
+    }
     out.textContent=JSON.stringify(data,null,2);
     status.textContent=data.success?"Image recognition succeeded.":"The test returned an error.";
     status.className="status "+(data.success?"good":"bad");
