@@ -45,6 +45,13 @@
         <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
       </section>
     <section class="card">
+      <h2 style="margin-top:0;font-size:1.1rem">Stored image comparison</h2>
+      <div class="hint">See the four actual files stored in Warehouse, from original to 256 px. Tap any image to view it larger.</div>
+      <button type="button" id="loadVariants" style="margin-top:12px">Show four stored images</button>
+      <div id="galleryStatus" class="status"></div>
+      <div id="variantGallery" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px"></div>
+    </section>
+    <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Stored image EXIF inspection</h2>
       <div class="hint">Downloads all four stored images through your authenticated session and reads embedded camera/EXIF/GPS metadata. Read-only.</div>
       <button type="button" id="inspectExif" style="margin-top:12px">Inspect EXIF for all four</button>
@@ -232,6 +239,59 @@ async function refreshAuth(){const {data:{session}}=await supabase.auth.getSessi
 
 loginButton.addEventListener("click",async()=>{const addr=email.value.trim();if(!addr){loginStatus.textContent="Enter your email address.";loginStatus.className="status bad";return}loginButton.disabled=true;loginStatus.textContent="Sending sign-in link…";loginStatus.className="status";const redirectTo=location.origin+location.pathname;const {error}=await supabase.auth.signInWithOtp({email:addr,options:{emailRedirectTo:redirectTo}});loginButton.disabled=false;if(error){loginStatus.textContent=error.message;loginStatus.className="status bad"}else{loginStatus.textContent="Check your email for the sign-in link.";loginStatus.className="status good"}});
 signOut.addEventListener("click",async()=>{await supabase.auth.signOut();await refreshAuth()});
+let galleryUrls=[];
+$("loadVariants").addEventListener("click",async()=>{
+  const btn=$("loadVariants"),status=$("galleryStatus"),gallery=$("variantGallery");
+  btn.disabled=true;status.className="status";status.textContent="Loading stored images…";
+  for(const url of galleryUrls)URL.revokeObjectURL(url);
+  galleryUrls=[];gallery.replaceChildren();
+  try {
+    const {data:bottles,error:be}=await supabase.from("bottles").select("id,created_at,data")
+      .eq("data->attributes->warehouse_test->>kind","image_variants").order("created_at",{ascending:false}).limit(1);
+    if(be)throw be;
+    const bottle=bottles?.[0];if(!bottle)throw new Error("No image test upload found.");
+    const batchId=bottle.data?.attributes?.warehouse_test?.batch_id;
+    const {data:media,error:me}=await supabase.from("media").select("object_path,notes,original_filename")
+      .eq("bottle_id",bottle.id);
+    if(me)throw me;
+    const map=new Map();
+    for(const m of media||[]){
+      try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
+    }
+    let loaded=0;
+    for(const [kind,title] of [["original","Original"],["jpeg_2048","2048 px"],["jpeg_1024","1024 px"],["jpeg_256","256 px"]]){
+      const card=document.createElement("div");
+      card.style.cssText="padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-width:0";
+      const name=document.createElement("div");name.textContent=title;name.style.cssText="font-weight:700;margin-bottom:8px";
+      card.append(name);
+      const entry=map.get(kind);
+      if(!entry){const error=document.createElement("div");error.textContent="Stored file not found";card.append(error);gallery.append(card);continue;}
+      try{
+        const {data:file,error:de}=await supabase.storage.from("warehouse-media").download(entry.object_path);
+        if(de)throw de;
+        const url=URL.createObjectURL(file);galleryUrls.push(url);
+        const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer";
+        link.title="Open "+title+" at actual resolution";
+        const img=document.createElement("img");img.src=url;img.alt=title+" stored image";
+        img.style.cssText="width:100%;height:210px;object-fit:contain;background:#090b0e;border-radius:8px";
+        link.append(img);card.append(link);
+        const dimensions=await new Promise(resolve=>{
+          const probe=new Image();probe.onload=()=>resolve(probe.naturalWidth+" × "+probe.naturalHeight+" px");
+          probe.onerror=()=>resolve("Dimensions unavailable");probe.src=url;
+        });
+        const detail=document.createElement("div");detail.className="hint";
+        detail.textContent=dimensions+" · "+sizeLabel(file.size);
+        const filename=document.createElement("div");filename.className="hint";
+        filename.style.cssText="overflow-wrap:anywhere";filename.textContent=entry.original_filename;
+        card.append(detail,filename);loaded++;
+      }catch(e){const error=document.createElement("div");error.className="status bad";error.textContent=e.message||String(e);card.append(error);}
+      gallery.append(card);
+    }
+    status.textContent=loaded+" of 4 stored images loaded. Tap to inspect full resolution.";
+    status.className="status "+(loaded===4?"good":"bad");
+  }catch(e){status.textContent="Gallery failed: "+(e.message||String(e));status.className="status bad"}
+  finally{btn.disabled=false;}
+});
 $("inspectExif").addEventListener("click",async()=>{
   const btn=$("inspectExif"),status=$("exifStatus"),out=$("exifResults");
   btn.disabled=true;out.textContent="";status.textContent="Loading EXIF parser…";status.className="status";
