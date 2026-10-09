@@ -30,7 +30,7 @@ async function refreshAuth(){const {data}=await supabase.auth.getUser();$("login
 supabase.auth.onAuthStateChange(()=>{refreshAuth()});
 let inventoryTimer=null;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!("inventory").classList.contains("hidden"))loadInventory();});
-inventoryTimer=setInterval(()=>{if(!document.hidden&&$("app")&&!$("app").classList.contains("hidden")){if(!$("inventory").classList.contains("hidden"))loadInventory();else if(!$("detail").classList.contains("hidden")&&currentBottle)openBottle(currentBottle.id);}},20000);
+inventoryTimer=setInterval(()=>{if(!document.hidden&&$("app")&&!$("app").classList.contains("hidden")){if(!$("inventory").classList.contains("hidden"))loadInventory();else if(!$("detail").classList.contains("hidden")&&currentBottle&&runCache.length&&["queued","retry_pending","processing"].includes(runCache[0].status))openBottle(currentBottle.id);}},20000);
 $("files").onchange=()=>{const files=[...$("files").files];$("primary").replaceChildren(...files.map((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=(i+1)+". "+f.name;return o;}))};
 async function storeOriginals(bottleId,files,mode="append"){
  const records=[];
