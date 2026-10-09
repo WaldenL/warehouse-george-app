@@ -36,7 +36,7 @@ async function storeOriginals(bottleId,files,mode="append"){
  const records=[];
  for(let i=0;i<files.length;i++){const f=files[i];const path="bottles/"+bottleId+"/originals/"+crypto.randomUUID()+"-"+fileName(f.name);
  status(mode==="append"?"detailStatus":"addStatus","Archiving original "+(i+1)+"/"+files.length+"…");
- const u=await supabase.storage.from("warehouse-media").upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false});
+ const u=await supabase.storage.from("warehouse-media").upload(path,f,{contentType:f.type||"application/octet-stream",cacheControl:"31536000",upsert:false});
  if(u.error)throw Error(u.error.message);
  const record={bottle_id:bottleId,object_path:path,media_type:"photo",view_type:i===0?"front":"other",original_filename:f.name,mime_type:f.type||"application/octet-stream",captured_at:f.lastModified?new Date(f.lastModified).toISOString():new Date().toISOString()};
  const r=await supabase.from("media").insert(record).select().single();if(r.error)throw Error(r.error.message);
@@ -48,6 +48,8 @@ async function queueBottle(bottleId,media){
  const row={id:runId,bottle_id:bottleId,status:"queued",source_media_ids:media.map(m=>m.id),original_image_paths:media.map(m=>m.object_path)};
  const response=await supabase.from("bottle_processing_runs").insert(row);
  if(response.error)throw Error(response.error.message);
+ const dispatched=await supabase.functions.invoke("warehouse-dispatch",{body:{processing_run_id:runId}});
+ if(dispatched.error||!dispatched.data?.accepted)throw Error("Bottle and photographs saved, but AWS dispatch failed. Open the bottle and choose Reprocess after dispatch is configured. "+(dispatched.data?.error||dispatched.error?.message||""));
  return runId;
 }
 $("create").onclick=async()=>{
