@@ -37,6 +37,21 @@
       <button type="button" class="tab" data-view="inventoryView">Inventory <span id="inventoryCount" class="count"></span></button>
     </nav>
     <section id="intakeView" class="view active">
+    <section class="card" id="pipelinePanel">
+      <h2 style="margin-top:0">Bottle processing pipeline · test bench</h2>
+      <p class="hint">Select 1–12 photos of ONE bottle. Originals are archived unchanged. Each working image is cropped, gently balanced and optionally background-isolated without generative reconstruction. OpenAI examines all working images together; the generated thumbnail is presentation-only. No inventory data is modified.</p>
+      <div class="actions"><label class="filebtn" for="pipelineFiles">Choose bottle photos</label><button type="button" id="pipelineRun" class="primary" disabled>Process bottle</button></div>
+      <input id="pipelineFiles" type="file" accept="image/*" multiple>
+      <div class="field" style="margin-top:14px"><label for="pipelinePrimary">Primary photograph (for thumbnail)</label><select id="pipelinePrimary"><option value="0">First photo</option></select></div>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="pipelineRemoveBg" checked style="width:auto;height:18px">Attempt non-generative background removal (may take time)</label>
+      <div class="hint">If automatic segmentation is unavailable, the test continues with crop and exposure corrections and clearly reports the fallback.</div>
+      <div id="pipelineStatus" class="status"></div>
+      <div id="pipelineImages" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-top:12px"></div>
+      <h3>Consolidated extraction</h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
+      <h3>Generated thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
+      <details style="margin-top:12px"><summary>Technical results, paths and processing notes</summary><pre id="pipelineTechnical" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre></details>
+    </section>
+
       <section class="card">
         <h2 style="margin-top:0;font-size:1.1rem">OpenAI image variant comparison</h2>
         <div class="hint" style="margin:0 0 12px">Compares every image in the latest test batch using identical OpenAI vision prompts (one API request per image). Reports observations, latency, tokens and estimated cost. Existing four-image batches remain supported.</div>
@@ -398,6 +413,90 @@ uploadVariants.addEventListener("click",async()=>{
     variantStatus.className="status bad";
   } finally {uploadVariants.disabled=!variantImage.files?.length;}
 });
+
+const pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
+pf.addEventListener("change",()=>{
+ const selected=[...(pf.files||[])];pp.replaceChildren();
+ selected.forEach((f,i)=>{const o=document.createElement("option");o.value=String(i);o.textContent=(i+1)+". "+f.name;pp.append(o)});
+ pr.disabled=!selected.length||selected.length>12;
+ ps.textContent=selected.length>12?"Select no more than 12 photos.":selected.length+" photo(s) selected.";
+});
+function pipelineCard(label,blob,detail){
+ const article=document.createElement("article");article.className="item";
+ const name=document.createElement("div");name.className="itemtitle";name.textContent=label;
+ const img=document.createElement("img");img.src=URL.createObjectURL(blob);img.alt=label;img.style="width:100%;height:205px;object-fit:contain;background:#0b0d11;border-radius:8px;margin-top:8px;cursor:zoom-in";
+ img.addEventListener("click",()=>{const dialog=$("photoDialog");$("photoFull").src=img.src;dialog.showModal()});
+ const meta=document.createElement("div");meta.className="hint";meta.textContent=detail;
+ article.append(name,img,meta);pi.append(article);
+}
+async function cleanedPhoto(file,removeBackground){
+ let input=file,mode="crop, orientation, gentle exposure adjustment; original pixels retained";
+ if(removeBackground){
+  try{
+   const library=await import("https://esm.sh/@imgly/background-removal@1.7.0");
+   input=await library.removeBackground(file,{progress:()=>{}});
+   mode="non-generative segmentation + crop + gentle exposure correction";
+  }catch(err){mode="Segmentation unavailable ("+(err?.message||String(err))+"); crop + gentle exposure only";}
+ }
+ const image=await createImageBitmap(input,{imageOrientation:"from-image"});
+ try{
+  const stage=document.createElement("canvas");stage.width=image.width;stage.height=image.height;
+  const ctx=stage.getContext("2d",{willReadFrequently:true});ctx.drawImage(image,0,0);
+  let minX=0,minY=0,maxX=image.width,maxY=image.height;
+  if(input!==file){
+   const pixels=ctx.getImageData(0,0,image.width,image.height).data;
+   let x0=image.width,y0=image.height,x1=0,y1=0,found=false;
+   for(let y=0;y<image.height;y+=2)for(let x=0;x<image.width;x+=2){
+    if(pixels[(y*image.width+x)*4+3]>72){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);found=true;}
+   }
+   if(found){const padx=Math.round((x1-x0)*.06),pady=Math.round((y1-y0)*.05);
+    minX=Math.max(0,x0-padx);minY=Math.max(0,y0-pady);maxX=Math.min(image.width,x1+padx);maxY=Math.min(image.height,y1+pady);}
+  }
+  const w=Math.max(1,maxX-minX),h=Math.max(1,maxY-minY);
+  const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+  const out=canvas.getContext("2d");out.fillStyle="#ffffff";out.fillRect(0,0,w,h);
+  out.filter="brightness(1.03) contrast(1.03)";out.drawImage(stage,minX,minY,w,h,0,0,w,h);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error("JPEG encoding failed")),"image/jpeg",.20));
+  return {blob,mode,width:w,height:h};
+ }finally{image.close();}
+}
+pr.addEventListener("click",async()=>{
+ const files=[...(pf.files||[])];if(!files.length||files.length>12)return;
+ pr.disabled=true;pi.replaceChildren();pe.textContent="";pt.textContent="Waiting for image extraction…";px.textContent="";
+ const session=await supabase.auth.getUser();const userId=session.data.user?.id;if(!userId){ps.textContent="Sign in first.";pr.disabled=false;return}
+ const runId=crypto.randomUUID(),base="pipeline-tests/"+userId+"/"+runId,paths=[],technical=[];
+ try{
+  for(let i=0;i<files.length;i++){
+   const file=files[i];if(!file.type.startsWith("image/"))throw Error(file.name+" is not an image");
+   ps.textContent="Photo "+(i+1)+"/"+files.length+": archiving untouched original…";
+   const originalPath=base+"/originals/"+i+"-"+safeName(file.name||"photo");
+   const o=await supabase.storage.from("warehouse-media").upload(originalPath,file,{contentType:file.type||"application/octet-stream",upsert:false});
+   if(o.error)throw Error("Original upload: "+o.error.message);
+   pipelineCard("Original "+(i+1),file,file.name+" · "+sizeLabel(file.size));
+   ps.textContent="Photo "+(i+1)+"/"+files.length+": creating cleaned working image…";
+   const cleaned=await cleanedPhoto(file,$("pipelineRemoveBg").checked);
+   const workingPath=base+"/working/"+i+".jpg";
+   const w=await supabase.storage.from("warehouse-media").upload(workingPath,cleaned.blob,{contentType:"image/jpeg",upsert:false,cacheControl:"3600"});
+   if(w.error)throw Error("Working image upload: "+w.error.message);
+   paths.push(workingPath);pipelineCard("Working "+(i+1),cleaned.blob,cleaned.width+" × "+cleaned.height+" · "+sizeLabel(cleaned.blob.size)+" · "+cleaned.mode);
+   technical.push({index:i+1,original_path:originalPath,original_bytes:file.size,working_path:workingPath,working_bytes:cleaned.blob.size,cleanup:cleaned.mode});
+   px.textContent=JSON.stringify({run_id:runId,photos:technical},null,2);
+  }
+  ps.textContent="All working images stored. OpenAI is reading the entire photo group and creating a thumbnail…";
+  const invoke=await supabase.functions.invoke("warehouse-pipeline-test",{body:{paths,primary_index:Number(pp.value)||0}});
+  if(invoke.error)throw Error("Processing endpoint: "+(invoke.data?.error||invoke.error.message));
+  const result=invoke.data;if(!result?.success)throw Error(result?.error||"Processing failed");
+  pe.textContent=result.extraction?JSON.stringify(result.extraction,null,2):result.raw_extraction;
+  if(result.thumbnail?.status==="ready"){
+   pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="AI-generated bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
+   const note=document.createElement("p");note.className="hint";note.textContent="Public, versioned thumbnail · "+result.thumbnail.bytes+" bytes · "+result.thumbnail.url;pt.append(note);
+  }else{pt.textContent="Thumbnail: "+(result.thumbnail?.error||result.thumbnail?.status||"not available")+". Extraction remains available."}
+  px.textContent=JSON.stringify({run_id:runId,photos:technical,model:result.model,usage:result.usage,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
+  ps.textContent="Pipeline completed. No permanent inventory bottle was created or modified.";ps.className="status good";
+ }catch(err){ps.textContent="Pipeline stopped: "+(err.message||String(err))+". Previously uploaded originals and working images remain in storage. Run ID: "+runId;ps.className="status bad";}
+ finally{pr.disabled=false;}
+});
+
 camera.addEventListener("change",()=>{addFiles(camera.files);camera.value=""});
 library.addEventListener("change",()=>{addFiles(library.files);library.value=""});
 
