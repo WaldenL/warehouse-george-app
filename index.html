@@ -260,11 +260,11 @@ $("loadVariants").addEventListener("click",async()=>{
     }
     let loaded=0;
     const kinds=["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>{
-  const get=k=>{const m=k.match(/^jpeg_(\\d+)(?:_q(\\d+))?$/);return m?[Number(m[1]),Number(m[2]||0)]:[0,0]};
+  const get=k=>{const m=k.match(/^jpeg_(\d+)(?:_q(\d+))?$/);return m?[Number(m[1]),Number(m[2]||0)]:[0,0]};
   const x=get(a),y=get(b);return y[0]-x[0]||y[1]-x[1];
 })];
     for(const kind of kinds){
-      const title=kind==="original"?"Original":kind.replace(/^jpeg_(\\d+)_q(\\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\\d+)$/,"$1 px");
+      const title=kind==="original"?"Original":kind.replace(/^jpeg_(\d+)_q(\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\d+)$/,"$1 px");
       const card=document.createElement("div");
       card.style.cssText="padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-width:0";
       const name=document.createElement("div");name.textContent=title;name.style.cssText="font-weight:700;margin-bottom:8px";
@@ -375,8 +375,8 @@ uploadVariants.addEventListener("click",async()=>{
         {contentType:item.mime,upsert:false,cacheControl:"3600"});
       if(ue)throw ue;
       const note=JSON.stringify({test:"image_variants",batch_id:batchId,kind:item.kind,
-        max_dimension:item.kind==="original"?null:Number(item.kind.match(/^jpeg_(\\d+)/)?.[1]||0),
-        jpeg_quality:item.kind==="original"?null:Number(item.kind.match(/_q(\\d+)$/)?.[1]||0),
+        max_dimension:item.kind==="original"?null:Number(item.kind.match(/^jpeg_(\d+)/)?.[1]||0),
+        jpeg_quality:item.kind==="original"?null:Number(item.kind.match(/_q(\d+)$/)?.[1]||0),
         pixel_width:item.width??null,pixel_height:item.height??null,source:"independent_original"});
       const {error:me}=await supabase.from("media").insert({
         bottle_id:bottleId,object_path:path,media_type:"photo",view_type:"other",
