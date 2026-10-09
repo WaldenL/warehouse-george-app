@@ -114,8 +114,7 @@ def process(event):
         return {"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
     except Exception as err:
         print(traceback.format_exc())
-        attempt=(run.get("attempt_count") or 0)+1
-        state="failed" if attempt>=3 else "retry_pending"
+        state="failed"
         api(cfg,"PATCH","bottle_processing_runs",{"status":state,"error_message":str(err)[:1000]},params={"id":"eq."+rid})
         return {"status":state,"id":rid,"error":str(err)[:500]}
 def handler(event,context):
