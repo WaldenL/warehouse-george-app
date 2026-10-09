@@ -67,7 +67,7 @@ jobs:
               --function-name "$LAMBDA_FUNCTION" \
               --package-type Image --code "ImageUri=$IMAGE_URI" \
               --role "$EXECUTION_ROLE" --architectures x86_64 \
-              --timeout 900 --memory-size 3072 \
+              --timeout 900 --memory-size 3008 \
               --region "$AWS_REGION"
           fi
           aws lambda wait function-updated --function-name "$LAMBDA_FUNCTION" --region "$AWS_REGION"
