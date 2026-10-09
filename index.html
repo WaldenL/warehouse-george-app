@@ -46,24 +46,24 @@
       </section>
     <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Stored image comparison</h2>
-      <div class="hint">See the four actual files stored in Warehouse, from original to 256 px. Tap any image to view it larger.</div>
-      <button type="button" id="loadVariants" style="margin-top:12px">Show four stored images</button>
+      <div class="hint">See the original and every JPEG variant actually stored in Warehouse. Tap any image to view it larger.</div>
+      <button type="button" id="loadVariants" style="margin-top:12px">Show stored image variants</button>
       <div id="galleryStatus" class="status"></div>
       <div id="variantGallery" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px"></div>
     </section>
     <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Stored image EXIF inspection</h2>
-      <div class="hint">Downloads all four stored images through your authenticated session and reads embedded camera/EXIF/GPS metadata. Read-only.</div>
-      <button type="button" id="inspectExif" style="margin-top:12px">Inspect EXIF for all four</button>
+      <div class="hint">Downloads all images in the latest test batch through your authenticated session and reads embedded EXIF/GPS metadata. Read-only.</div>
+      <button type="button" id="inspectExif" style="margin-top:12px">Inspect EXIF for batch</button>
       <div id="exifStatus" class="status"></div>
       <pre id="exifResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre>
     </section>
     <section class="card">
       <h2 style="margin-top:0;font-size:1.1rem">Image Variants Test</h2>
-      <div class="hint">Store one original, byte-for-byte unchanged, plus three independent JPEG derivatives (2048, 1024, and 256 px maximum longest side), all in real Warehouse storage.</div>
+      <div class="hint">Store the original unchanged plus eight independent JPEG variants: 1600 px at 99/95/90%, 512 px at 99/95/90%, and 128 px at 99/95%.</div>
       <div class="actions" style="margin-top:12px">
         <label class="filebtn" for="variantImage">Choose image</label>
-        <button type="button" id="uploadVariants" class="primary" disabled>Upload four versions</button>
+        <button type="button" id="uploadVariants" class="primary" disabled>Upload nine versions</button>
       </div>
       <input id="variantImage" type="file" accept="image/*">
       <div id="variantSelected" class="hint">No image selected.</div>
@@ -144,7 +144,7 @@ const supabase=createClient(
   {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}}
 );
 
-async function makeJpegVariant(file, maxDimension) {
+async function makeJpegVariant(file, maxDimension, quality) {
   const bitmap=await createImageBitmap(file,{imageOrientation:"from-image"});
   try {
     const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
@@ -159,8 +159,8 @@ async function makeJpegVariant(file, maxDimension) {
     context.imageSmoothingEnabled=true;
     context.imageSmoothingQuality="high";
     context.drawImage(bitmap,0,0,width,height);
-    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("JPEG encoding failed")),"image/jpeg",0.88));
-    return {blob,width,height,maxDimension};
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("JPEG encoding failed")),"image/jpeg",quality/100));
+    return {blob,width,height,maxDimension,quality};
   } finally {bitmap.close();}
 }
 const $=id=>document.getElementById(id);
@@ -259,7 +259,12 @@ $("loadVariants").addEventListener("click",async()=>{
       try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
     }
     let loaded=0;
-    for(const [kind,title] of [["original","Original"],["jpeg_2048","2048 px"],["jpeg_1024","1024 px"],["jpeg_256","256 px"]]){
+    const kinds=["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>{
+  const get=k=>{const m=k.match(/^jpeg_(\\d+)(?:_q(\\d+))?$/);return m?[Number(m[1]),Number(m[2]||0)]:[0,0]};
+  const x=get(a),y=get(b);return y[0]-x[0]||y[1]-x[1];
+})];
+    for(const kind of kinds){
+      const title=kind==="original"?"Original":kind.replace(/^jpeg_(\\d+)_q(\\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\\d+)$/,"$1 px");
       const card=document.createElement("div");
       card.style.cssText="padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-width:0";
       const name=document.createElement("div");name.textContent=title;name.style.cssText="font-weight:700;margin-bottom:8px";
@@ -287,8 +292,8 @@ $("loadVariants").addEventListener("click",async()=>{
       }catch(e){const error=document.createElement("div");error.className="status bad";error.textContent=e.message||String(e);card.append(error);}
       gallery.append(card);
     }
-    status.textContent=loaded+" of 4 stored images loaded. Tap to inspect full resolution.";
-    status.className="status "+(loaded===4?"good":"bad");
+    status.textContent=loaded+" of "+kinds.length+" stored images loaded. Tap to inspect full resolution.";
+    status.className="status "+(loaded===kinds.length?"good":"bad");
   }catch(e){status.textContent="Gallery failed: "+(e.message||String(e));status.className="status bad"}
   finally{btn.disabled=false;}
 });
@@ -309,7 +314,7 @@ $("inspectExif").addEventListener("click",async()=>{
       try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
     }
     const results=[];
-    for(const version of ["original","jpeg_2048","jpeg_1024","jpeg_256"]){
+    for(const version of ["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>a.localeCompare(b))]){
       const m=map.get(version);
       if(!m){results.push({version,error:"Missing stored variant"});continue;}
       status.textContent="Inspecting "+version+"…";
@@ -349,9 +354,9 @@ uploadVariants.addEventListener("click",async()=>{
   try {
     if(!file.type.startsWith("image/"))throw new Error("Please select an image.");
     variantStatus.textContent="Creating independent JPEGs from original…";
-    const sizes=[2048,1024,256];
+    const specs=[[1600,99],[1600,95],[1600,90],[512,99],[512,95],[512,90],[128,99],[128,95]];
     const derivatives=[];
-    for(const limit of sizes)derivatives.push(await makeJpegVariant(file,limit));
+    for(const [limit,quality] of specs)derivatives.push(await makeJpegVariant(file,limit,quality));
     // Test bottle deliberately labelled in the record, never reuses a real collection bottle.
     const testData={schema_version:1,inventory_domain:"Test / non-collection",
       identity:{brand:"Warehouse Image Test",product_name:"Image variant experiment"},
@@ -361,16 +366,17 @@ uploadVariants.addEventListener("click",async()=>{
     if(be)throw be;
     bottleId=bottle.id;
     const files=[{kind:"original",blob:file,name:file.name,mime:file.type||"application/octet-stream",size:file.size},
-      ...derivatives.map(d=>({kind:"jpeg_"+d.maxDimension,blob:d.blob,name:"variant-"+d.maxDimension+".jpg",
+      ...derivatives.map(d=>({kind:"jpeg_"+d.maxDimension+"_q"+d.quality,blob:d.blob,name:"variant-"+d.maxDimension+"-q"+d.quality+".jpg",
         mime:"image/jpeg",size:d.blob.size,width:d.width,height:d.height}))];
     for(const item of files) {
-      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/4)…";
+      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/"+files.length)…";
       const path=bottleId+"/"+batchId+"/"+item.kind+"/"+(item.kind==="original"?encodeURIComponent(file.name||"image"):item.name);
       const {error:ue}=await supabase.storage.from("warehouse-media").upload(path,item.blob,
         {contentType:item.mime,upsert:false,cacheControl:"3600"});
       if(ue)throw ue;
       const note=JSON.stringify({test:"image_variants",batch_id:batchId,kind:item.kind,
-        max_dimension:item.kind==="original"?null:Number(item.kind.slice(5)),
+        max_dimension:item.kind==="original"?null:Number(item.kind.match(/^jpeg_(\\d+)/)?.[1]||0),
+        jpeg_quality:item.kind==="original"?null:Number(item.kind.match(/_q(\\d+)$/)?.[1]||0),
         pixel_width:item.width??null,pixel_height:item.height??null,source:"independent_original"});
       const {error:me}=await supabase.from("media").insert({
         bottle_id:bottleId,object_path:path,media_type:"photo",view_type:"other",
@@ -381,14 +387,14 @@ uploadVariants.addEventListener("click",async()=>{
       results.push({kind:item.kind,bytes:item.size,width:item.width??null,height:item.height??null,path});
       variantResults.textContent=JSON.stringify({bottle_id:bottleId,batch_id:batchId,files:results},null,2);
     }
-    variantStatus.textContent="Success: original + three JPEG variants stored in Warehouse.";
+    variantStatus.textContent="Success: original + eight JPEG variants stored in Warehouse.";
     variantStatus.className="status good";
     variantImage.value="";
     variantSelected.textContent="No image selected.";
     await loadWarehouseLists();
   } catch(error) {
     variantStatus.textContent="Upload incomplete: "+(error?.message||String(error))+
-      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 4 files saved.":"");
+      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 9 files saved.":"");
     variantStatus.className="status bad";
   } finally {uploadVariants.disabled=!variantImage.files?.length;}
 });
