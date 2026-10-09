@@ -47,7 +47,7 @@
       <div class="hint">If automatic segmentation is unavailable, the test continues with crop and exposure corrections and clearly reports the fallback.</div>
       <div id="pipelineStatus" class="status"></div>
       <div id="pipelineImages" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-top:12px"></div>
-      <h3>Consolidated extraction</h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
+      <h3>Estimated processing cost</h3><div id="pipelineCost" class="item"><span class="hint">Shown after a completed run.</span></div><h3>Consolidated extraction</h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
       <h3>Primary-photo thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
       <details style="margin-top:12px"><summary>Technical results, paths and processing notes</summary><pre id="pipelineTechnical" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre></details>
     </section>
@@ -414,7 +414,7 @@ uploadVariants.addEventListener("click",async()=>{
   } finally {uploadVariants.disabled=!variantImage.files?.length;}
 });
 
-const pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
+const pc=$("pipelineCost"),pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
 pf.addEventListener("change",()=>{
  const selected=[...(pf.files||[])];pp.replaceChildren();
  selected.forEach((f,i)=>{const o=document.createElement("option");o.value=String(i);o.textContent=(i+1)+". "+f.name;pp.append(o)});
@@ -479,7 +479,7 @@ async function makePipelineThumbnail(blob){
 }
 pr.addEventListener("click",async()=>{
  const files=[...(pf.files||[])];if(!files.length||files.length>12)return;
- pr.disabled=true;pi.replaceChildren();pe.textContent="";pt.textContent="Waiting for image extraction…";px.textContent="";
+ pr.disabled=true;pi.replaceChildren();pc.textContent="Calculating after extraction…";pe.textContent="";pt.textContent="Waiting for image extraction…";px.textContent="";
  const session=await supabase.auth.getUser();const userId=session.data.user?.id;if(!userId){ps.textContent="Sign in first.";pr.disabled=false;return}
  const runId=crypto.randomUUID(),base="pipeline-tests/"+userId+"/"+runId,paths=[],technical=[];let primaryThumb=null;
  try{
@@ -505,11 +505,17 @@ pr.addEventListener("click",async()=>{
   if(invoke.error)throw Error("Processing endpoint: "+(invoke.data?.error||invoke.error.message));
   const result=invoke.data;if(!result?.success)throw Error(result?.error||"Processing failed");
   pe.textContent=result.extraction?JSON.stringify(result.extraction,null,2):result.raw_extraction;
+  const usd=Number(result.cost?.estimated_total_usd??0);
+  const fmt=n=>"$"+Number(n).toFixed(6);
+  pc.replaceChildren();
+  const summary=document.createElement("div");summary.className="itemtitle";summary.textContent="OpenAI extraction: "+fmt(usd)+" (estimated)";
+  const note=document.createElement("div");note.className="hint";note.textContent="Input "+(result.usage?.input_tokens??"?")+" tokens · output "+(result.usage?.output_tokens??"?")+" tokens · thumbnail generation $0.00 (non-generative, local) · background removal runs locally. Supabase storage, transfer, and hosting are not included.";
+  pc.append(summary,note);
   if(result.thumbnail?.status==="ready"){
    pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="Directly derived bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
    const note=document.createElement("p");note.className="hint";note.textContent="Public, versioned thumbnail · "+result.thumbnail.bytes+" bytes · "+result.thumbnail.url;pt.append(note);
   }else{pt.textContent="Thumbnail: "+(result.thumbnail?.error||result.thumbnail?.status||"not available")+". Extraction remains available."}
-  px.textContent=JSON.stringify({run_id:runId,photos:technical,model:result.model,usage:result.usage,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
+  px.textContent=JSON.stringify({run_id:runId,photos:technical,model:result.model,usage:result.usage,cost:result.cost,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
   ps.textContent="Pipeline completed. No permanent inventory bottle was created or modified.";ps.className="status good";
  }catch(err){ps.textContent="Pipeline stopped: "+(err.message||String(err))+". Previously uploaded originals and working images remain in storage. Run ID: "+runId;ps.className="status bad";}
  finally{pr.disabled=false;}
