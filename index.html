@@ -7,7 +7,7 @@
 <section class="card" id="login"><h2>Sign in</h2><p class="muted">Warehouse is private; sign in with your email magic link.</p><div class="row"><input id="email" type="email" placeholder="Email"><button id="sendLink" class="primary">Send sign-in link</button></div><p class="status" id="loginStatus"></p></section>
 <div id="app" class="hidden"><div class="tabs"><button id="tabInventory" class="activeTab">Inventory</button><button id="tabAdd">Add bottle</button></div>
 <section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div><div id="bottleList" class="bottles"></div></section>
-<section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload views of one physical bottle. Originals are archived unchanged; cleaned working images are saved and analyzed together.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><div class="row"><label><input id="bg" type="checkbox"> Isolate bottle from background (higher memory use; best on desktop)</label></div><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Create bottle and process photographs</button></div><p id="addStatus" class="status"></p></section>
+<section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
 <section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny"></span></div><section class="card"><div class="hero"><img id="detailThumb" alt="Bottle thumbnail"><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
 <section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div id="gallery" class="photo-grid"></div></section>
 <section class="card"><h2>Visual extraction</h2><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></section>
@@ -28,59 +28,10 @@ $("sendLink").onclick=async()=>{const email=$("email").value.trim();const r=awai
 $("logout").onclick=async()=>{await supabase.auth.signOut();await refreshAuth()};
 async function refreshAuth(){const {data}=await supabase.auth.getUser();$("login").classList.toggle("hidden",!!data.user);$("app").classList.toggle("hidden",!data.user);$("logout").classList.toggle("hidden",!data.user);if(data.user)await loadInventory();}
 supabase.auth.onAuthStateChange(()=>{refreshAuth()});
+let inventoryTimer=null;
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!("inventory").classList.contains("hidden"))loadInventory();});
+inventoryTimer=setInterval(()=>{if(!document.hidden&&$("app")&&!$("app").classList.contains("hidden")){if(!$("inventory").classList.contains("hidden"))loadInventory();else if(!$("detail").classList.contains("hidden")&&currentBottle)openBottle(currentBottle.id);}},20000);
 $("files").onchange=()=>{const files=[...$("files").files];$("primary").replaceChildren(...files.map((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=(i+1)+". "+f.name;return o;}))};
-async function cleanedPhoto(file,removeBackground){
- let input=file,mode="orientation + gentle exposure adjustment (background retained)";
- if(removeBackground){
-  try{
-   const library=await import("https://esm.sh/@imgly/background-removal@1.7.0");
-   input=await library.removeBackground(file,{progress:()=>{}});
-   mode="non-generative segmentation + crop + gentle exposure correction";
-  }catch(err){mode="Segmentation unavailable ("+(err?.message||String(err))+"); orientation + exposure only";}
- }
- const image=await createImageBitmap(input,{imageOrientation:"from-image",resizeWidth:undefined});
- try{
-  const maxSide=2200,scale=Math.min(1,maxSide/Math.max(image.width,image.height));
-  const sw=Math.max(1,Math.round(image.width*scale)),sh=Math.max(1,Math.round(image.height*scale));
-  const stage=document.createElement("canvas");stage.width=sw;stage.height=sh;
-  const ctx=stage.getContext("2d",{willReadFrequently:input!==file});ctx.drawImage(image,0,0,sw,sh);
-  let minX=0,minY=0,maxX=sw,maxY=sh;
-  if(input!==file){
-   const pixels=ctx.getImageData(0,0,sw,sh).data;
-   let x0=image.width,y0=image.height,x1=0,y1=0,found=false;
-   for(let y=0;y<sh;y+=2)for(let x=0;x<sw;x+=2){
-    if(pixels[(y*sw+x)*4+3]>72){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);found=true;}
-   }
-   if(found){const padx=Math.round((x1-x0)*.06),pady=Math.round((y1-y0)*.05);
-    minX=Math.max(0,x0-padx);minY=Math.max(0,y0-pady);maxX=Math.min(sw,x1+padx);maxY=Math.min(sh,y1+pady);}
-  }
-  const w=Math.max(1,maxX-minX),h=Math.max(1,maxY-minY);
-  const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
-  const out=canvas.getContext("2d");out.fillStyle="#ffffff";out.fillRect(0,0,w,h);
-  out.filter="brightness(1.03) contrast(1.03)";out.drawImage(stage,minX,minY,w,h,0,0,w,h);
-  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error("JPEG encoding failed")),"image/jpeg",.20));
-  return {blob,mode,width:w,height:h};
- }finally{image.close();}
-}
-
-async function makePipelineThumbnail(blob){
- const image=await createImageBitmap(blob,{imageOrientation:"from-image"});
- try{
-  const canvas=document.createElement("canvas");canvas.width=192;canvas.height=288;
-  const ctx=canvas.getContext("2d");ctx.fillStyle="#ffffff";ctx.fillRect(0,0,192,288);
-  // Preserve the photograph's actual pixels; fit the entire bottle into a neutral canvas.
-  const scale=Math.min(184/image.width,280/image.height);
-  const w=Math.round(image.width*scale),h=Math.round(image.height*scale);
-  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
-  ctx.drawImage(image,Math.round((192-w)/2),Math.round((288-h)/2),w,h);
-  const format=canvas.toDataURL("image/webp").startsWith("data:image/webp")?"image/webp":"image/png";
-  const result=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error("Thumbnail encoding failed")),format,.78));
-  const bytes=new Uint8Array(await result.arrayBuffer());let binary="";
-  for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.slice(i,i+8192));
-  return {blob:result,base64:btoa(binary),format};
- }finally{image.close();}
-}
-
 async function storeOriginals(bottleId,files,mode="append"){
  const records=[];
  for(let i=0;i<files.length;i++){const f=files[i];const path="bottles/"+bottleId+"/originals/"+crypto.randomUUID()+"-"+fileName(f.name);
@@ -92,33 +43,12 @@ async function storeOriginals(bottleId,files,mode="append"){
  records.push(r.data);
  }return records;
 }
-async function processBottle(bottleId,media,primaryId,mode="detail"){
- const output=mode==="add"?"addStatus":"detailStatus",runId=crypto.randomUUID();
- const row={id:runId,bottle_id:bottleId,status:"pending",source_media_ids:media.map(m=>m.id),original_image_paths:media.map(m=>m.object_path)};
- const ins=await supabase.from("bottle_processing_runs").insert(row);if(ins.error)throw Error(ins.error.message);
- const paths=[];let thumb=null;
- try{
- for(let i=0;i<media.length;i++){
-  const m=media[i];status(output,"Cleaning photo "+(i+1)+"/"+media.length+"…");
-  const d=await supabase.storage.from("warehouse-media").download(m.object_path);
-  if(d.error)throw Error(d.error.message);
-  const file=new File([d.data],m.original_filename||("photo-"+i),{type:m.mime_type||"image/jpeg"});
-  const working=await cleanedPhoto(file,$("bg").checked),path="bottles/"+bottleId+"/working/"+runId+"/"+m.id+".jpg";
-  const put=await supabase.storage.from("warehouse-media").upload(path,working.blob,{contentType:"image/jpeg",upsert:false});
-  if(put.error)throw Error(put.error.message);
-  paths.push(path);
-  const update=await supabase.from("media").update({working_path:path,working_mime_type:"image/jpeg"}).eq("id",m.id);
-  if(update.error)throw Error(update.error.message);
-  if(m.id===primaryId)thumb=await makePipelineThumbnail(working.blob);
- }
- if(!thumb){const d=await supabase.storage.from("warehouse-media").download(paths[0]);if(d.error)throw Error(d.error.message);thumb=await makePipelineThumbnail(d.data);}
- status(output,"Extracting facts across all photographs…");
- const call=await supabase.functions.invoke("warehouse-pipeline-test",{body:{bottle_id:bottleId,run_id:runId,paths,thumbnail_base64:thumb.base64}});
- let result=call.data;
- if(call.error){status(output,"Connection interrupted; checking saved results…");const recovered=await supabase.functions.invoke("warehouse-pipeline-test",{body:{bottle_id:bottleId,run_id:runId,action:"recover"}});if(recovered.error||!recovered.data?.success)throw Error("Result may still be processing. Return to this bottle and check its history. Run ID: "+runId);result=recovered.data;}
- if(!result?.success)throw Error(result?.error||"Extraction unsuccessful");
- status(output,"Processing completed. Results saved to the database.");return result;
- }catch(e){await supabase.from("bottle_processing_runs").update({status:"failed",error_message:e.message}).eq("id",runId).eq("status","pending");throw e;}
+async function queueBottle(bottleId,media){
+ const runId=crypto.randomUUID();
+ const row={id:runId,bottle_id:bottleId,status:"queued",source_media_ids:media.map(m=>m.id),original_image_paths:media.map(m=>m.object_path)};
+ const response=await supabase.from("bottle_processing_runs").insert(row);
+ if(response.error)throw Error(response.error.message);
+ return runId;
 }
 $("create").onclick=async()=>{
  const files=[...$("files").files];if(!files.length||files.length>12){status("addStatus","Select 1–12 photos of one bottle.",true);return}
@@ -130,8 +60,8 @@ $("create").onclick=async()=>{
   const primaryId=media[Number($("primary").value)||0].id;
   const update=await supabase.from("bottles").update({data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},processing:{status:"pending",primary_media_id:primaryId}}}).eq("id",bottleId);
   if(update.error)throw Error(update.error.message);
-  await processBottle(bottleId,media,primaryId,"add");
-  $("files").value="";$("sticker").value="";await openBottle(bottleId);
+  await queueBottle(bottleId,media);
+  $("files").value="";$("sticker").value="";$("primary").replaceChildren();status("addStatus","Bottle submitted. The server will process it; you can upload the next bottle.");await loadInventory();tab("add");
  }catch(e){status("addStatus","Ingestion stopped: "+e.message+(bottleId?" · Bottle ID: "+bottleId:""),true);if(bottleId)await openBottle(bottleId);}
  finally{$("create").disabled=false}
 };
@@ -162,12 +92,12 @@ async function openBottle(id){
  }
  $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View extraction";button.onclick=()=>showRun(run);item.append(button);$("runs").append(item)}
  const recent=runCache.find(x=>x.status==="completed");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
- status("detailStatus",runCache[0]?.status==="failed"?"Last attempt failed: "+runCache[0].error_message:"");
+ status("detailStatus",runCache[0]?.status==="failed"?"Last attempt failed: "+runCache[0].error_message:(runCache[0]&&runCache[0].status!=="completed"?"Latest job: "+runCache[0].status+". Processing continues on the server.":""));
 }
 function showRun(run){$("extraction").textContent=JSON.stringify(run.extraction_json,null,2)||"No data";$("cost").textContent=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated OpenAI cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens"}
 $("reprocess").onclick=async()=>{
  if(!currentBottle)return;$("reprocess").disabled=true;
- try{const primary=currentBottle.data?.processing?.primary_media_id||mediaCache[0]?.id;await processBottle(currentBottle.id,mediaCache,primary,"detail");await openBottle(currentBottle.id)}catch(e){status("detailStatus",e.message,true)}finally{$("reprocess").disabled=false}
+ try{await queueBottle(currentBottle.id,mediaCache);status("detailStatus","Reprocessing queued on the server. You can leave this page.");await openBottle(currentBottle.id)}catch(e){status("detailStatus",e.message,true)}finally{$("reprocess").disabled=false}
 };
 $("addPhotos").onclick=()=>$("extraFiles").click();
 $("extraFiles").onchange=async()=>{
