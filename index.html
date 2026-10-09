@@ -39,7 +39,7 @@
     <section id="intakeView" class="view active">
     <section class="card" id="pipelinePanel">
       <h2 style="margin-top:0">Bottle processing pipeline · test bench</h2>
-      <p class="hint">Select 1–12 photos of ONE bottle. Originals are archived unchanged. Each working image is cropped, gently balanced and optionally background-isolated without generative reconstruction. OpenAI examines all working images together; the generated thumbnail is presentation-only. No inventory data is modified.</p>
+      <p class="hint">Select 1–12 photos of ONE bottle. Originals are archived unchanged. Each working image is cropped, gently balanced and optionally background-isolated without generative reconstruction. OpenAI examines all working images together; the thumbnail is derived directly from the primary working photo, without generative AI. No inventory data is modified.</p>
       <div class="actions"><label class="filebtn" for="pipelineFiles">Choose bottle photos</label><button type="button" id="pipelineRun" class="primary" disabled>Process bottle</button></div>
       <input id="pipelineFiles" type="file" accept="image/*" multiple>
       <div class="field" style="margin-top:14px"><label for="pipelinePrimary">Primary photograph (for thumbnail)</label><select id="pipelinePrimary"><option value="0">First photo</option></select></div>
@@ -48,7 +48,7 @@
       <div id="pipelineStatus" class="status"></div>
       <div id="pipelineImages" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-top:12px"></div>
       <h3>Consolidated extraction</h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
-      <h3>Generated thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
+      <h3>Primary-photo thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
       <details style="margin-top:12px"><summary>Technical results, paths and processing notes</summary><pre id="pipelineTechnical" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre></details>
     </section>
 
@@ -460,11 +460,28 @@ async function cleanedPhoto(file,removeBackground){
   return {blob,mode,width:w,height:h};
  }finally{image.close();}
 }
+async function makePipelineThumbnail(blob){
+ const image=await createImageBitmap(blob,{imageOrientation:"from-image"});
+ try{
+  const canvas=document.createElement("canvas");canvas.width=192;canvas.height=288;
+  const ctx=canvas.getContext("2d");ctx.fillStyle="#ffffff";ctx.fillRect(0,0,192,288);
+  // Preserve the photograph's actual pixels; fit the entire bottle into a neutral canvas.
+  const scale=Math.min(184/image.width,280/image.height);
+  const w=Math.round(image.width*scale),h=Math.round(image.height*scale);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  ctx.drawImage(image,Math.round((192-w)/2),Math.round((288-h)/2),w,h);
+  const format=canvas.toDataURL("image/webp").startsWith("data:image/webp")?"image/webp":"image/png";
+  const result=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error("Thumbnail encoding failed")),format,.78));
+  const bytes=new Uint8Array(await result.arrayBuffer());let binary="";
+  for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.slice(i,i+8192));
+  return {blob:result,base64:btoa(binary),format};
+ }finally{image.close();}
+}
 pr.addEventListener("click",async()=>{
  const files=[...(pf.files||[])];if(!files.length||files.length>12)return;
  pr.disabled=true;pi.replaceChildren();pe.textContent="";pt.textContent="Waiting for image extraction…";px.textContent="";
  const session=await supabase.auth.getUser();const userId=session.data.user?.id;if(!userId){ps.textContent="Sign in first.";pr.disabled=false;return}
- const runId=crypto.randomUUID(),base="pipeline-tests/"+userId+"/"+runId,paths=[],technical=[];
+ const runId=crypto.randomUUID(),base="pipeline-tests/"+userId+"/"+runId,paths=[],technical=[];let primaryThumb=null;
  try{
   for(let i=0;i<files.length;i++){
    const file=files[i];if(!file.type.startsWith("image/"))throw Error(file.name+" is not an image");
@@ -478,17 +495,18 @@ pr.addEventListener("click",async()=>{
    const workingPath=base+"/working/"+i+".jpg";
    const w=await supabase.storage.from("warehouse-media").upload(workingPath,cleaned.blob,{contentType:"image/jpeg",upsert:false,cacheControl:"3600"});
    if(w.error)throw Error("Working image upload: "+w.error.message);
-   paths.push(workingPath);pipelineCard("Working "+(i+1),cleaned.blob,cleaned.width+" × "+cleaned.height+" · "+sizeLabel(cleaned.blob.size)+" · "+cleaned.mode);
+   paths.push(workingPath);if(i===(Number(pp.value)||0))primaryThumb=await makePipelineThumbnail(cleaned.blob);pipelineCard("Working "+(i+1),cleaned.blob,cleaned.width+" × "+cleaned.height+" · "+sizeLabel(cleaned.blob.size)+" · "+cleaned.mode);
    technical.push({index:i+1,original_path:originalPath,original_bytes:file.size,working_path:workingPath,working_bytes:cleaned.blob.size,cleanup:cleaned.mode});
    px.textContent=JSON.stringify({run_id:runId,photos:technical},null,2);
   }
-  ps.textContent="All working images stored. OpenAI is reading the entire photo group and creating a thumbnail…";
-  const invoke=await supabase.functions.invoke("warehouse-pipeline-test",{body:{paths,primary_index:Number(pp.value)||0}});
+  ps.textContent="All working images stored. OpenAI is reading the photo group; the primary-photo thumbnail is ready for storage…";
+  if(primaryThumb)pipelineCard("Thumbnail preview (192 × 288)",primaryThumb.blob,"Non-generative · "+sizeLabel(primaryThumb.blob.size));
+  const invoke=await supabase.functions.invoke("warehouse-pipeline-test",{body:{paths,thumbnail_base64:primaryThumb?.base64}});
   if(invoke.error)throw Error("Processing endpoint: "+(invoke.data?.error||invoke.error.message));
   const result=invoke.data;if(!result?.success)throw Error(result?.error||"Processing failed");
   pe.textContent=result.extraction?JSON.stringify(result.extraction,null,2):result.raw_extraction;
   if(result.thumbnail?.status==="ready"){
-   pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="AI-generated bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
+   pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="Directly derived bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
    const note=document.createElement("p");note.className="hint";note.textContent="Public, versioned thumbnail · "+result.thumbnail.bytes+" bytes · "+result.thumbnail.url;pt.append(note);
   }else{pt.textContent="Thumbnail: "+(result.thumbnail?.error||result.thumbnail?.status||"not available")+". Extraction remains available."}
   px.textContent=JSON.stringify({run_id:runId,photos:technical,model:result.model,usage:result.usage,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
