@@ -125,7 +125,10 @@ $("create").onclick=async()=>{
   const label=$("sticker").value.trim();const inserted=await supabase.from("bottles").insert({label_number:label?Number(label):null,data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},processing:{status:"pending"}}}).select("id").single();
   if(inserted.error)throw Error(inserted.error.message);bottleId=inserted.data.id;
   const media=await storeOriginals(bottleId,files,"add");
-  await processBottle(bottleId,media,media[Number($("primary").value)||0].id,"add");
+  const primaryId=media[Number($("primary").value)||0].id;
+  const update=await supabase.from("bottles").update({data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},processing:{status:"pending",primary_media_id:primaryId}}}).eq("id",bottleId);
+  if(update.error)throw Error(update.error.message);
+  await processBottle(bottleId,media,primaryId,"add");
   $("files").value="";$("sticker").value="";await openBottle(bottleId);
  }catch(e){status("addStatus","Ingestion stopped: "+e.message+(bottleId?" · Bottle ID: "+bottleId:""),true);if(bottleId)await openBottle(bottleId);}
  finally{$("create").disabled=false}
