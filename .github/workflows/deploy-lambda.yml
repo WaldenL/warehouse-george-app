@@ -24,6 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Diagnose GitHub OIDC identity
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+            for (const key of ['iss', 'aud', 'sub', 'repository', 'ref', 'job_workflow_ref']) {
+              core.info(key + ': ' + JSON.stringify(payload[key] ?? null));
+            }
+
       - name: Configure AWS authentication via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
