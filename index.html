@@ -1,434 +1,34 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Warehouse">
-  <meta name="theme-color" content="#111827">
-  <title>Warehouse George Intake</title>
-  <style>
-    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color-scheme:dark;--bg:#0f1115;--panel:#191d24;--panel2:#232a35;--border:#374151;--text:#f3f4f6;--muted:#a7afbd;--accent:#d6aa58;--bad:#ff9898;--good:#94d7a7}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:720px;margin:auto;padding:max(20px,env(safe-area-inset-top)) 16px max(30px,env(safe-area-inset-bottom))}h1{margin:0 0 5px;font-size:1.7rem}.sub{margin:0 0 18px;color:var(--muted);line-height:1.4}.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}.field{margin-bottom:16px}.field:last-child{margin-bottom:0}label{display:block;font-weight:650;margin-bottom:7px}input[type=email],input[type=number],textarea,select{width:100%;font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}textarea{min-height:95px;resize:vertical}.hint,.status,.userbar{font-size:.9rem;color:var(--muted);line-height:1.4}.hint{margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap}button,.filebtn{min-height:46px;padding:11px 15px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font:inherit;font-weight:650;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.primary{background:var(--accent);border-color:var(--accent);color:#17120a}.danger{color:var(--bad)}button:disabled{opacity:.5;cursor:wait}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.userbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.hidden{display:none!important}.status{min-height:22px;margin-top:10px}.status.good{color:var(--good)}.status.bad{color:var(--bad)}#photoList{display:grid;gap:10px;margin-top:14px}.photo{display:grid;grid-template-columns:84px minmax(0,1fr);gap:11px;padding:10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)}.thumb{width:84px;height:84px;object-fit:cover;border-radius:9px;background:#080a0d}.meta{min-width:0}.fname{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}.controls{display:grid;grid-template-columns:1fr auto;gap:8px}.remove{min-height:42px;padding:8px 11px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;position:sticky;top:max(8px,env(safe-area-inset-top));z-index:5;background:var(--bg);padding:4px 0 8px}.tab{width:100%;min-height:42px;padding:8px 10px}.tab.active{background:var(--accent);border-color:var(--accent);color:#17120a}.view{display:none}.view.active{display:block}.list{display:grid;gap:10px}.item{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}.itemhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.itemtitle{font-weight:750;line-height:1.3}.badge{font-size:.78rem;padding:4px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}.badge.warn{color:#ffd98a;border-color:#7d6842}.details{margin-top:7px;color:var(--muted);font-size:.9rem;line-height:1.4}.empty{color:var(--muted);text-align:center;padding:24px 10px}.count{font-variant-numeric:tabular-nums}.refreshrow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.refreshrow h2{margin:0;font-size:1.15rem}@media(max-width:420px){.photo{grid-template-columns:70px minmax(0,1fr)}.thumb{width:70px;height:70px}.controls{grid-template-columns:1fr}.remove{width:100%}.tabs{gap:6px}.tab{font-size:.9rem;padding:7px 5px}}
-  .item{cursor:pointer}.item:hover{border-color:#907947}.bottleRow{display:flex;gap:12px;align-items:center}.bottleThumb{width:76px;height:90px;object-fit:contain;background:#0b0d11;border-radius:9px;border:1px solid var(--border);flex-shrink:0}.bottleCopy{min-width:0;flex:1}.review{color:#ffda8c}.detailHeader{display:flex;align-items:center;justify-content:space-between;gap:8px}.detailGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.detailGrid .field{margin:0}.detailGrid .wide{grid-column:1/-1}.detailGrid input,.detailGrid textarea,.detailGrid select{width:100%}.detailGallery{display:flex;gap:8px;overflow-x:auto;padding:6px 0 12px}.detailGallery img{width:130px;height:160px;object-fit:contain;background:#0b0d11;border-radius:9px;border:1px solid var(--border);cursor:pointer}.detailGallery img:focus{outline:2px solid var(--accent)}.detailPhoto{width:100%;max-height:72vh;object-fit:contain}.muted{color:var(--muted)}.flagBar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.flagBar .badge{white-space:normal}input[type=text],input[type=date]{width:100%;font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}@media(max-width:480px){.detailGrid{grid-template-columns:1fr}.detailGrid .wide{grid-column:auto}}
-  </style>
-</head>
-<body>
-<main>
-  <h1>Warehouse George</h1>
-  <p class="sub">Quick bottle intake — shoot the evidence now; let George sort out the archaeology later.</p>
-
-  <section id="loginCard" class="card hidden">
-    <div class="field">
-      <label for="email">Sign in</label>
-      <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
-      <div class="hint">A magic sign-in link will be emailed to you.</div>
-    </div>
-    <button id="loginButton" type="button" class="primary">Email sign-in link</button>
-    <div id="loginStatus" class="status"></div>
-  </section>
-
-  <section id="app" class="hidden">
-    <div class="userbar"><span id="userEmail"></span><button id="signOut" type="button">Sign out</button></div>
-    <nav class="tabs" aria-label="Warehouse sections">
-      <button type="button" class="tab active" data-view="intakeView">Intake</button>
-      <button type="button" class="tab" data-view="inboxView">Inbox <span id="inboxCount" class="count"></span></button>
-      <button type="button" class="tab" data-view="inventoryView">Inventory <span id="inventoryCount" class="count"></span></button>
-    </nav>
-    <section id="intakeView" class="view active">
-    <section class="card" id="pipelinePanel">
-      <h2 style="margin-top:0">Bottle processing pipeline · test bench</h2>
-      <p class="hint">Select 1–12 photos of ONE bottle. Originals are archived unchanged. Each working image is cropped, gently balanced and optionally background-isolated without generative reconstruction. OpenAI examines all working images together; the thumbnail is derived directly from the primary working photo, without generative AI. No inventory data is modified.</p>
-      <div class="actions"><label class="filebtn" for="pipelineFiles">Choose bottle photos</label><button type="button" id="pipelineRun" class="primary" disabled>Process bottle</button></div>
-      <input id="pipelineFiles" type="file" accept="image/*" multiple>
-      <div class="field" style="margin-top:14px"><label for="pipelinePrimary">Primary photograph (for thumbnail)</label><select id="pipelinePrimary"><option value="0">First photo</option></select></div>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="pipelineRemoveBg" checked style="width:auto;height:18px">Attempt non-generative background removal (may take time)</label>
-      <div class="hint">If automatic segmentation is unavailable, the test continues with crop and exposure corrections and clearly reports the fallback.</div>
-      <div id="pipelineStatus" class="status"></div><div class="actions" style="margin-top:8px"><button type="button" id="pipelineRecover">Recover completed run</button><input type="text" id="pipelineRecoverId" placeholder="Run ID to recover" aria-label="Run ID to recover" style="flex:1;min-width:170px"></div>
-      <div id="pipelineImages" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-top:12px"></div>
-      <h3>Estimated processing cost</h3><div id="pipelineCost" class="item"><span class="hint">Shown after a completed run.</span></div><h3>Consolidated extraction <span id="pipelineSchema" class="badge">Schema pending</span></h3><pre id="pipelineExtraction" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:650px;overflow-y:auto"></pre>
-      <h3>Primary-photo thumbnail</h3><div id="pipelineThumbnail" class="hint">Not generated yet.</div>
-      <details style="margin-top:12px"><summary>Technical results, paths and processing notes</summary><pre id="pipelineTechnical" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre></details>
-    </section>
-
-      <section class="card">
-        <h2 style="margin-top:0;font-size:1.1rem">OpenAI image variant comparison</h2>
-        <div class="hint" style="margin:0 0 12px">Compares every image in the latest test batch using identical OpenAI vision prompts (one API request per image). Reports observations, latency, tokens and estimated cost. Existing four-image batches remain supported.</div>
-        <button type="button" id="runVisionTest">Compare stored image variants</button>
-        <div id="visionTestStatus" class="status"></div>
-        <pre id="visionTestResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem"></pre>
-      </section>
-    <section class="card">
-      <h2 style="margin-top:0;font-size:1.1rem">Stored image comparison</h2>
-      <div class="hint">See the original and every JPEG variant actually stored in Warehouse. Tap any image to view it larger.</div>
-      <button type="button" id="loadVariants" style="margin-top:12px">Show stored image variants</button>
-      <div id="galleryStatus" class="status"></div>
-      <div id="variantGallery" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px"></div>
-    </section>
-    <section class="card">
-      <h2 style="margin-top:0;font-size:1.1rem">Stored image EXIF inspection</h2>
-      <div class="hint">Downloads all images in the latest test batch through your authenticated session and reads embedded EXIF/GPS metadata. Read-only.</div>
-      <button type="button" id="inspectExif" style="margin-top:12px">Inspect EXIF for batch</button>
-      <div id="exifStatus" class="status"></div>
-      <pre id="exifResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre>
-    </section>
-    <section class="card">
-      <h2 style="margin-top:0;font-size:1.1rem">Image Variants Test</h2>
-      <div class="hint">Store the untouched original plus six independent JPEGs: full resolution at 50% and 20%, 1600 px at 50% and 20%, 256 px at 100% and 50%.</div>
-      <div class="actions" style="margin-top:12px">
-        <label class="filebtn" for="variantImage">Choose image</label>
-        <button type="button" id="uploadVariants" class="primary" disabled>Upload seven versions</button>
-      </div>
-      <input id="variantImage" type="file" accept="image/*">
-      <div id="variantSelected" class="hint">No image selected.</div>
-      <div id="variantStatus" class="status"></div>
-      <pre id="variantResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem"></pre>
-    </section>
-    <form id="form">
-      <section class="card">
-        <div class="field">
-          <label for="labelNumber">Bottle sticker number <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input id="labelNumber" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 1385">
-          <div class="hint">Leave blank for photos-first intake. Warehouse will create an unlabeled draft bottle.</div>
-        </div>
-        <div class="field">
-          <label for="notes">Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <textarea id="notes" placeholder="Bought at the distillery; box upstairs; handwritten date on back label…"></textarea>
-        </div>
-      </section>
-
-      <section class="card">
-        <label>Photos</label>
-        <div class="actions">
-          <label class="filebtn" for="camera">📷 Take photo</label>
-          <label class="filebtn" for="library">🖼️ Add from Photos</label>
-        </div>
-        <input id="camera" type="file" accept="image/*" capture="environment">
-        <input id="library" type="file" accept="image/*" multiple>
-        <div class="hint">Add as many as you like. Originals upload directly to private Warehouse storage.</div>
-        <div id="photoList"></div>
-      </section>
-
-      <section class="card">
-        <button id="submit" type="submit" class="primary" style="width:100%">Send to Warehouse</button>
-        <div id="submitStatus" class="status"></div>
-      </section>
-    </form>
-    </section>
-
-    <section id="inboxView" class="view">
-      <div class="refreshrow"><h2>Needs Processing</h2><button type="button" id="refreshInbox">Refresh</button></div>
-      <div class="hint" style="margin:0 0 12px">Bottles whose research state is still unreviewed or marked research needed. These are waiting for Warehouse George to inspect and enrich.</div>
-      <div id="inboxList" class="list"></div>
-      <div id="inboxStatus" class="status"></div>
-    </section>
-
-    <section id="detailView" class="view">
-      <div class="detailHeader"><button id="detailBack" type="button">← Back</button><h2 id="detailTitle">Bottle details</h2></div>
-      <div id="detailFlags" class="flagBar"></div>
-      <div id="detailGallery" class="detailGallery"></div>
-      <form id="detailForm" class="card">
-        <div id="detailFields" class="detailGrid"></div>
-        <div class="actions" style="margin-top:18px">
-          <button type="submit" class="primary" id="saveDetail">Save details</button>
-          <div class="field" style="width:100%"><label for="researchRequestText">Research question or instructions</label><textarea id="researchRequestText" placeholder="What should Dusty George investigate?"></textarea></div>
-          <button type="button" id="requestResearch">Queue research request</button>
-          <button type="button" id="markVerify">Flag for my verification</button>
-          <button type="button" id="confirmVerify">Mark verified</button>
-        </div>
-        <div id="detailStatus" class="status"></div>
-      </form>
-      <section class="card"><h3>Photographs</h3><div class="hint">Tap a photo to see it full-size. Originals are retained in private storage.</div></section>
-    </section>
-    <dialog id="photoDialog" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;color:var(--text);max-width:96vw"><button id="closePhoto" type="button">Close</button><img id="photoFull" class="detailPhoto" alt="Bottle photograph"></dialog>
-    <section id="inventoryView" class="view">
-      <div class="refreshrow"><h2>Inventory</h2><button type="button" id="refreshInventory">Refresh</button></div>
-      <div id="inventoryList" class="list"></div>
-      <div id="inventoryStatus" class="status"></div>
-    </section>
-  </section>
-</main>
-
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>Warehouse George</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#101318;--panel:#1a2028;--line:#34404d;--text:#f6f7fa;--muted:#aab5c4;--gold:#d7ae67;--green:#9ce2b6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:920px;padding:22px 16px 80px;margin:auto}h1{margin:0;font-size:1.7rem}h2{font-size:1.15rem;margin:0 0 12px}h3{font-size:1rem;margin:16px 0 7px}.muted,.status{color:var(--muted);font-size:.9rem;line-height:1.5}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}section.card,article.card{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:17px;margin-bottom:14px}button,.pick{background:#273340;color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-weight:650;padding:10px 15px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.primary{background:var(--gold);color:#1b1710;border-color:var(--gold)}button:disabled{opacity:.55}input,select{font:inherit;font-size:16px;padding:11px;background:#222c37;color:var(--text);border:1px solid var(--line);border-radius:9px;max-width:100%}input[type=file]{width:100%;margin:8px 0 12px}label{display:block;font-size:.9rem;font-weight:650;margin-bottom:7px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.hidden{display:none!important}.tabs{display:flex;gap:7px;margin:0 0 15px}.activeTab{background:var(--gold);color:#15110a}.bottles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bottle{display:flex;gap:11px;align-items:center;width:100%;text-align:left;min-height:112px}.bottle img{height:96px;width:65px;object-fit:contain;background:#fff;border-radius:5px}.name{font-weight:760}.tiny{font-size:.77rem;color:var(--muted);margin-top:6px}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.photo img{width:100%;height:205px;object-fit:contain;background:#fff;border-radius:9px}.photo{background:#222c37;padding:9px;border-radius:10px}.photo strong{display:block;margin-bottom:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;background:#111820;padding:12px;border-radius:10px;max-height:650px;overflow:auto}.hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.hero img{width:120px;height:175px;object-fit:contain;background:#fff;border-radius:8px}.status{margin:12px 0}.error{color:#ffacac}.success{color:var(--green)}dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;max-width:95vw}dialog img{max-width:85vw;max-height:75vh;object-fit:contain;display:block;margin-top:10px}
+</style></head><body><main><header><div><h1>Warehouse George</h1><div class="muted">Bottle inventory · photographic evidence · versioned extraction</div></div><button id="logout" class="hidden">Sign out</button></header>
+<section class="card" id="login"><h2>Sign in</h2><p class="muted">Warehouse is private; sign in with your email magic link.</p><div class="row"><input id="email" type="email" placeholder="Email"><button id="sendLink" class="primary">Send sign-in link</button></div><p class="status" id="loginStatus"></p></section>
+<div id="app" class="hidden"><div class="tabs"><button id="tabInventory" class="activeTab">Inventory</button><button id="tabAdd">Add bottle</button></div>
+<section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div><div id="bottleList" class="bottles"></div></section>
+<section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload views of one physical bottle. Originals are archived unchanged; cleaned working images are saved and analyzed together.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><div class="row"><label><input id="bg" type="checkbox" checked> Isolate bottle from background</label></div><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Create bottle and process photographs</button></div><p id="addStatus" class="status"></p></section>
+<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny"></span></div><section class="card"><div class="hero"><img id="detailThumb" alt="Bottle thumbnail"><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
+<section class="card"><h2>Photographic record</h2><p class="muted">Cleaned photographs are the default. Tap an image to view it larger; use Original for archival evidence.</p><div id="gallery" class="photo-grid"></div></section>
+<section class="card"><h2>Visual extraction</h2><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></section>
+<section class="card"><h2>Processing history</h2><div id="runs"></div></section></section></div>
+<dialog id="viewer"><button id="closeViewer">Close</button><img id="large" alt="Bottle photograph"></dialog>
 <script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-const supabase=createClient(
-  "https://bvunoupmchywlklchscj.supabase.co",
-  "sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH",
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}}
-);
-
-async function makeJpegVariant(file, maxDimension, quality) {
-  const bitmap=await createImageBitmap(file,{imageOrientation:"from-image"});
-  try {
-    const scale=maxDimension===null?1:Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
-    const width=Math.max(1,Math.round(bitmap.width*scale));
-    const height=Math.max(1,Math.round(bitmap.height*scale));
-    const canvas=document.createElement("canvas");
-    canvas.width=width;canvas.height=height;
-    const context=canvas.getContext("2d");
-    if(!context)throw new Error("Canvas unavailable.");
-    context.fillStyle="#ffffff";
-    context.fillRect(0,0,width,height);
-    context.imageSmoothingEnabled=true;
-    context.imageSmoothingQuality="high";
-    context.drawImage(bitmap,0,0,width,height);
-    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("JPEG encoding failed")),"image/jpeg",quality/100));
-    return {blob,width,height,maxDimension,quality};
-  } finally {bitmap.close();}
-}
-const $=id=>document.getElementById(id);
-const loginCard=$("loginCard"),app=$("app"),email=$("email"),loginButton=$("loginButton"),loginStatus=$("loginStatus"),userEmail=$("userEmail"),signOut=$("signOut");
-const form=$("form"),labelNumber=$("labelNumber"),notes=$("notes"),camera=$("camera"),library=$("library"),photoList=$("photoList"),submit=$("submit"),submitStatus=$("submitStatus");
-const tabs=[...document.querySelectorAll(".tab")];
-const inboxList=$("inboxList"),inventoryList=$("inventoryList"),inboxStatus=$("inboxStatus"),inventoryStatus=$("inventoryStatus"),inboxCount=$("inboxCount"),inventoryCount=$("inventoryCount");
-const refreshInbox=$("refreshInbox"),refreshInventory=$("refreshInventory");
-let cachedBottles=[];let cachedMediaCounts=new Map(),cachedMedia=new Map(),thumbUrls=new Map(),detailBottle=null,returnView="inventoryView";
-function esc(s){const d=document.createElement("div");d.textContent=String(s??"");return d.innerHTML}
-function bottleTitle(b){const d=b.data||{},i=d.identity||{};return i.product_name||i.brand||i.producer||(b.label_number?("Bottle "+b.label_number):"Unlabeled draft")}
-function bottleSubtitle(b){const d=b.data||{},i=d.identity||{},s=d.specification||{},bits=[];if(i.producer&&i.producer!==bottleTitle(b))bits.push(i.producer);if(i.vintage_year)bits.push(i.vintage_year);if(s.abv)bits.push(s.abv+"% ABV");if(s.bottle_size_ml)bits.push(s.bottle_size_ml+" ml");if(d.state&&d.state.status)bits.push(d.state.status);return bits.join(" · ")}
-function verification(b){return b.data?.attributes?.warehouse_verification||{}}
-function needsProcessing(b){const state=b.data?.research?.status||"unreviewed";return state==="unreviewed"||state==="research_needed"||verification(b).status==="needs_verification"}
-function renderBottleItem(b,inbox){const media=cachedMediaCounts.get(b.id)||0;const title=esc(bottleTitle(b));const sub=esc(bottleSubtitle(b));const sticker=b.label_number?("#"+b.label_number):"No sticker";const research=b.data?.research?.status||"unreviewed";const review=verification(b);const thumb=thumbUrls.get(b.id);const flags=(review.status==="needs_verification"?'<span class="badge warn">Verify</span>':"")+(research==="research_needed"?'<span class="badge warn">Research</span>':"")+(research==="unreviewed"?'<span class="badge">Unprocessed</span>':"");return '<article class="item" data-bottle-id="'+esc(b.id)+'" tabindex="0" role="button" aria-label="View '+title+'"><div class="bottleRow">'+(thumb?'<img class="bottleThumb" src="'+esc(thumb)+'" alt="Bottle thumbnail">':'<div class="bottleThumb"></div>')+'<div class="bottleCopy"><div class="itemtitle">'+title+'</div><div class="details">'+esc(sticker)+(sub?(" · "+sub):"")+'<br>'+media+' photo'+(media===1?"":"s")+'</div><div class="flagBar">'+flags+'</div></div></div></article>'}
-async function loadWarehouseLists(){inboxStatus.textContent="Loading…";inventoryStatus.textContent="Loading…";const bRes=await supabase.from("bottles").select("id,label_number,data,created_at,updated_at").order("created_at",{ascending:false}).limit(5000);if(bRes.error){inboxStatus.textContent=bRes.error.message;inventoryStatus.textContent=bRes.error.message;inboxStatus.className="status bad";inventoryStatus.className="status bad";return}cachedBottles=bRes.data||[];cachedMediaCounts=new Map();cachedMedia=new Map();thumbUrls=new Map();if(cachedBottles.length){const ids=cachedBottles.map(b=>b.id);for(let j=0;j<ids.length;j+=150){const mRes=await supabase.from("media").select("id,bottle_id,object_path,view_type,mime_type,created_at").in("bottle_id",ids.slice(j,j+150));if(!mRes.error){for(const m of mRes.data||[]){if(!cachedMedia.has(m.bottle_id))cachedMedia.set(m.bottle_id,[]);cachedMedia.get(m.bottle_id).push(m);cachedMediaCounts.set(m.bottle_id,(cachedMediaCounts.get(m.bottle_id)||0)+1)}}}
-const paths=[];const bottleIds=[];for(const b of cachedBottles){const photos=(cachedMedia.get(b.id)||[]).filter(m=>m.mime_type?.startsWith("image/"));const primary=photos.find(m=>m.view_type==="front")||photos[0];if(primary){paths.push(primary.object_path);bottleIds.push(b.id)}}for(let j=0;j<paths.length;j+=100){const r=await supabase.storage.from("warehouse-media").createSignedUrls(paths.slice(j,j+100),3600,{transform:{width:180,height:210,resize:"contain"}});if(!r.error)r.data?.forEach((x,i)=>{if(x.signedUrl)thumbUrls.set(bottleIds[j+i],x.signedUrl)})}}
-const inbox=cachedBottles.filter(needsProcessing);inventoryList.innerHTML=cachedBottles.length?cachedBottles.map(b=>renderBottleItem(b,false)).join(""):'<div class="empty">No bottles yet.</div>';inboxList.innerHTML=inbox.length?inbox.map(b=>renderBottleItem(b,true)).join(""):'<div class="empty">Inbox is clear.</div>';inventoryCount.textContent=cachedBottles.length?("("+cachedBottles.length+")"):"";inboxCount.textContent=inbox.length?("("+inbox.length+")"):"";inventoryStatus.textContent="";inboxStatus.textContent="";inventoryStatus.className="status";inboxStatus.className="status"}
-const editFields=[
-["identity.brand","Brand"],["identity.producer","Producer"],["identity.product_name","Product / expression"],["identity.category","Category"],["identity.age_statement","Stated age"],["identity.vintage_year","Vintage year","number"],["identity.release_year","Release year","number"],["identity.batch","Batch / release"],["identity.cask","Cask / barrel"],["identity.finish","Finish"],["identity.bottle_serial","Bottle / serial number"],
-["specification.proof","Proof","number"],["specification.abv","ABV (%)","number"],["specification.bottle_size_ml","Volume (mL)","number"],["specification.bottling_date","Bottling date"],["specification.label_era","Label era"],["specification.closure_type","Closure type"],
-["origin.country","Country"],["origin.region","Region"],["origin.province_state","State / province"],["origin.bottler","Bottler"],["origin.importer","Importer"],
-["acquisition.acquired_on","Acquired date"],["acquisition.source","Acquisition source"],["acquisition.invoice_reference","Invoice / reference"],["acquisition.purchase_price","Purchase price","number"],["acquisition.fees","Fees","number"],["acquisition.shipping","Shipping","number"],["acquisition.tax","Tax","number"],["acquisition.total_landed_cost","Total landed cost","number"],
-["state.status","Bottle status","status"],["state.opened_at","Opened date"],["state.remaining_ml","Remaining volume (mL)","number"],["state.disposition","Disposition"],
-["condition.description","Condition notes","textarea"],["condition.fill_level","Fill level"],["condition.closure_condition","Closure condition"],["condition.label_condition","Label condition"],["provenance","Provenance","textarea"],["research.summary","Research summary","textarea"],["notes","Notes","textarea"]];
-const getPath=(v,path)=>path.split(".").reduce((a,k)=>a?.[k],v);
-const putPath=(v,path,value)=>{const keys=path.split(".");let obj=v;for(const k of keys.slice(0,-1))obj=obj[k]??={};obj[keys.at(-1)]=value};
-const clone=o=>JSON.parse(JSON.stringify(o));
-function makeDetailField([path,label,type]){const val=getPath(detailBottle.data,path);const div=document.createElement("div");div.className="field"+(["textarea"].includes(type)?" wide":"");const lab=document.createElement("label");lab.textContent=label;const id="edit-"+path.replaceAll(".","-");lab.htmlFor=id;let el;if(type==="textarea"){el=document.createElement("textarea");el.rows=3}else if(type==="status"){el=document.createElement("select");for(const [value,text] of [["","Unknown"],["sealed","Sealed"],["open","Open"],["removed","Removed"],["uncertain","Uncertain"]]){const opt=document.createElement("option");opt.value=value;opt.textContent=text;el.append(opt)}}else{el=document.createElement("input");el.type=type==="number"?"number":"text";if(type==="number"){el.step="any";el.min="0"}}el.id=id;el.dataset.path=path;el.dataset.kind=type||"text";el.value=val??"";div.append(lab,el);return div}
-async function openBottle(id){const b=cachedBottles.find(x=>x.id===id);if(!b)return;returnView=document.querySelector(".view.active")?.id==="inboxView"?"inboxView":"inventoryView";detailBottle=clone(b);$("detailTitle").textContent=bottleTitle(b);$("detailFields").replaceChildren(...editFields.map(makeDetailField));const v=verification(b);$("detailFlags").innerHTML=(v.status==="needs_verification"?'<span class="badge warn">Verification needed: '+esc(v.reason||"Please review record")+'</span>':"")+(b.data?.research?.status==="research_needed"?'<span class="badge warn">Research requested</span>':"");$("detailStatus").textContent="";$("researchRequestText").value=b.data?.attributes?.warehouse_research_request?.request||"";const gallery=$("detailGallery");gallery.replaceChildren();for(const media of cachedMedia.get(id)||[]){if(!media.mime_type?.startsWith("image/"))continue;const res=await supabase.storage.from("warehouse-media").createSignedUrl(media.object_path,3600,{transform:{width:350,resize:"contain"}});if(res.error)continue;const im=document.createElement("img");im.src=res.data.signedUrl;im.alt=media.view_type||"Bottle image";im.title="Open "+im.alt;im.tabIndex=0;im.addEventListener("click",()=>openPhoto(media.object_path));im.addEventListener("keydown",e=>{if(e.key==="Enter")openPhoto(media.object_path)});gallery.append(im)}document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="detailView"));window.scrollTo(0,0)}
-async function openPhoto(path){const r=await supabase.storage.from("warehouse-media").createSignedUrl(path,900);if(r.error){$("detailStatus").textContent=r.error.message;return}$("photoFull").src=r.data.signedUrl;$("photoDialog").showModal()}
-async function persistPatch(patch){const id=detailBottle.id;const fresh=await supabase.from("bottles").select("data,updated_at").eq("id",id).single();if(fresh.error)throw fresh.error;if(fresh.data.updated_at!==detailBottle.updated_at)throw Error("This bottle changed since you opened it. Go back and reopen to avoid overwriting someone else's edits.");const updated=clone(fresh.data.data);for(const [path,value] of Object.entries(patch))putPath(updated,path,value);const result=await supabase.from("bottles").update({data:updated,updated_at:new Date().toISOString()}).eq("id",id).eq("updated_at",detailBottle.updated_at).select("id,data,updated_at").maybeSingle();if(result.error)throw result.error;if(!result.data)throw Error("Concurrent update detected; please reopen this bottle.");detailBottle.data=result.data.data;detailBottle.updated_at=result.data.updated_at;const idx=cachedBottles.findIndex(b=>b.id===id);if(idx>=0)cachedBottles[idx]={...cachedBottles[idx],...result.data};$("detailStatus").textContent="Saved.";$("detailStatus").className="status good"}
-$("detailBack").addEventListener("click",async()=>{await switchView(returnView)});
-$("closePhoto").addEventListener("click",()=>$("photoDialog").close());
-for(const lst of [inboxList,inventoryList]){lst.addEventListener("click",e=>{const item=e.target.closest("[data-bottle-id]");if(item)openBottle(item.dataset.bottleId)});lst.addEventListener("keydown",e=>{if(e.key==="Enter"){const item=e.target.closest("[data-bottle-id]");if(item)openBottle(item.dataset.bottleId)}})}
-$("detailForm").addEventListener("submit",async e=>{e.preventDefault();const patch={};for(const el of $("detailFields").querySelectorAll("[data-path]")){const path=el.dataset.path,old=getPath(detailBottle.data,path),raw=el.value.trim();if(raw===""&&(old===undefined||old===null||old===""))continue;let value=raw===""?null:el.dataset.kind==="number"?Number(raw):raw;if(value===null&&old!==undefined){$("detailStatus").textContent="To clear an existing field, use a dedicated correction workflow. No values were erased.";return}if(value!==old&&value!==null)patch[path]=value}if(!Object.keys(patch).length){$("detailStatus").textContent="No changes.";return}try{await persistPatch(patch)}catch(err){$("detailStatus").textContent=err.message;$("detailStatus").className="status bad"}});
-$("requestResearch").addEventListener("click",async()=>{const reason=$("researchRequestText").value.trim();const status=$("detailStatus");if(!reason){status.textContent="Enter what you want researched, then tap Queue research request.";status.className="status bad";$("researchRequestText").focus();return}const btn=$("requestResearch");btn.disabled=true;status.textContent="Saving research request…";status.className="status";try{await persistPatch({"research.status":"research_needed","attributes.warehouse_research_request":{requested_at:new Date().toISOString(),request:reason,status:"pending",source:"owner_ui"}});$("detailFlags").innerHTML+='<span class="badge warn">Research queued</span>';status.textContent="Research request saved in Warehouse. It has not yet been sent to Dusty George.";status.className="status good";await loadWarehouseLists()}catch(e){status.textContent="Could not save research request: "+e.message;status.className="status bad"}finally{btn.disabled=false}});
-$("markVerify").addEventListener("click",async()=>{const reason=prompt("What needs your verification?","Confirm label details, bottle status, and provenance");if(reason===null)return;try{await persistPatch({"attributes.warehouse_verification":{status:"needs_verification",reason:reason.trim()||"Review bottle details",flagged_at:new Date().toISOString()}});$("detailFlags").innerHTML+='<span class="badge warn">Verification needed</span>'}catch(e){$("detailStatus").textContent=e.message}});
-$("confirmVerify").addEventListener("click",async()=>{if(!confirm("Confirm you have reviewed the bottle's details? This will not mark external research complete."))return;try{await persistPatch({"attributes.warehouse_verification":{status:"verified",verified_at:new Date().toISOString(),reason:"Owner reviewed"}});$("detailFlags").textContent="Verified by owner"}catch(e){$("detailStatus").textContent=e.message}});
-async function switchView(id){tabs.forEach(function(t){t.classList.toggle("active",t.dataset.view===id)});document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});if(id!=="intakeView")await loadWarehouseLists()}
-tabs.forEach(function(t){t.addEventListener("click",function(){switchView(t.dataset.view)})});
-refreshInbox.addEventListener("click",loadWarehouseLists);
-refreshInventory.addEventListener("click",loadWarehouseLists);
-
-$("runVisionTest").addEventListener("click",async()=>{
-  const button=$("runVisionTest"),status=$("visionTestStatus"),out=$("visionTestResults");
-  button.disabled=true;status.textContent="Running separate OpenAI inspections for the stored image variants…";out.textContent="";
-  try {
-    const {data,error}=await supabase.functions.invoke("warehouse-vision-test",{method:"POST",body:{}});
-    if(error){
-      let details=null;
-      try { if(error.context && typeof error.context.json==="function") details=await error.context.json(); } catch(_){}
-      out.textContent=JSON.stringify(details??{message:error.message},null,2);
-      status.textContent="The test returned an error.";
-      status.className="status bad";
-      return;
-    }
-    out.textContent=JSON.stringify(data,null,2);
-    status.textContent=data.success?"All image inspections completed.":(data.cases?.length?"Comparison completed with one or more failed requests.":"The test returned an error.");
-    status.className="status "+(data.success?"good":"bad");
-  } catch(e) {
-    status.textContent=e?.message||String(e);status.className="status bad";
-  } finally {button.disabled=false;}
-});
-const viewTypes=[["front","Front"],["back","Back"],["left","Left"],["right","Right"],["top","Top"],["bottom","Bottom"],["closure","Closure"],["capsule","Capsule"],["label_detail","Label detail"],["serial","Serial / bottle number"],["packaging","Packaging"],["receipt","Receipt"],["document","Document"],["other","Other"]];
-let photos=[];let activeRecordId=null;let activeLabelNumber=null;
-
-function safeName(n){return (n||"photo.jpg").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120)||"photo.jpg"}
-function sizeLabel(n){return n<1048576?`${Math.max(1,Math.round(n/1024))} KB`:`${(n/1048576).toFixed(1)} MB`}
-function defaultView(i){return i===0?"front":i===1?"back":"other"}
-function addFiles(list){for(const file of Array.from(list||[])){if(!file.type.startsWith("image/"))continue;photos.push({id:crypto.randomUUID(),file,viewType:defaultView(photos.length),url:URL.createObjectURL(file)})}renderPhotos()}
-function removePhoto(id){const p=photos.find(x=>x.id===id);if(p)URL.revokeObjectURL(p.url);photos=photos.filter(x=>x.id!==id);renderPhotos()}
-function renderPhotos(){photoList.innerHTML="";photos.forEach((p,i)=>{const row=document.createElement("div");row.className="photo";const img=document.createElement("img");img.className="thumb";img.src=p.url;img.alt=`Bottle photo ${i+1}`;const meta=document.createElement("div");meta.className="meta";const fn=document.createElement("div");fn.className="fname";fn.textContent=`${p.file.name||"camera photo"} · ${sizeLabel(p.file.size)}`;const controls=document.createElement("div");controls.className="controls";const sel=document.createElement("select");for(const [v,l] of viewTypes){const o=document.createElement("option");o.value=v;o.textContent=l;o.selected=v===p.viewType;sel.appendChild(o)}sel.addEventListener("change",()=>p.viewType=sel.value);const rm=document.createElement("button");rm.type="button";rm.className="remove danger";rm.textContent="Remove";rm.addEventListener("click",()=>removePhoto(p.id));controls.append(sel,rm);meta.append(fn,controls);row.append(img,meta);photoList.append(row)})}
-
-async function refreshAuth(){const {data:{session}}=await supabase.auth.getSession();if(session?.user){loginCard.classList.add("hidden");app.classList.remove("hidden");userEmail.textContent=session.user.email||"Signed in";loadWarehouseLists()}else{app.classList.add("hidden");loginCard.classList.remove("hidden")}}
-
-loginButton.addEventListener("click",async()=>{const addr=email.value.trim();if(!addr){loginStatus.textContent="Enter your email address.";loginStatus.className="status bad";return}loginButton.disabled=true;loginStatus.textContent="Sending sign-in link…";loginStatus.className="status";const redirectTo=location.origin+location.pathname;const {error}=await supabase.auth.signInWithOtp({email:addr,options:{emailRedirectTo:redirectTo}});loginButton.disabled=false;if(error){loginStatus.textContent=error.message;loginStatus.className="status bad"}else{loginStatus.textContent="Check your email for the sign-in link.";loginStatus.className="status good"}});
-signOut.addEventListener("click",async()=>{await supabase.auth.signOut();await refreshAuth()});
-let galleryUrls=[];
-$("loadVariants").addEventListener("click",async()=>{
-  const btn=$("loadVariants"),status=$("galleryStatus"),gallery=$("variantGallery");
-  btn.disabled=true;status.className="status";status.textContent="Loading stored images…";
-  for(const url of galleryUrls)URL.revokeObjectURL(url);
-  galleryUrls=[];gallery.replaceChildren();
-  try {
-    const {data:bottles,error:be}=await supabase.from("bottles").select("id,created_at,data")
-      .eq("data->attributes->warehouse_test->>kind","image_variants").order("created_at",{ascending:false}).limit(1);
-    if(be)throw be;
-    const bottle=bottles?.[0];if(!bottle)throw new Error("No image test upload found.");
-    const batchId=bottle.data?.attributes?.warehouse_test?.batch_id;
-    const {data:media,error:me}=await supabase.from("media").select("object_path,notes,original_filename")
-      .eq("bottle_id",bottle.id);
-    if(me)throw me;
-    const map=new Map();
-    for(const m of media||[]){
-      try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
-    }
-    let loaded=0;
-    const kinds=["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>{
-  const get=k=>{const m=k.match(/^jpeg_(full|\d+)(?:_q(\d+))?$/);return m?[m[1]==="full"?999999:Number(m[1]),Number(m[2]||0)]:[0,0]};
-  const x=get(a),y=get(b);return y[0]-x[0]||y[1]-x[1];
-})];
-    for(const kind of kinds){
-      const title=kind==="original"?"Original":kind.replace(/^jpeg_full_q(\d+)$/,"Full size · $1% JPEG").replace(/^jpeg_(\d+)_q(\d+)$/,"$1 px · $2% JPEG").replace(/^jpeg_(\d+)$/,"$1 px");
-      const card=document.createElement("div");
-      card.style.cssText="padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-width:0";
-      const name=document.createElement("div");name.textContent=title;name.style.cssText="font-weight:700;margin-bottom:8px";
-      card.append(name);
-      const entry=map.get(kind);
-      if(!entry){const error=document.createElement("div");error.textContent="Stored file not found";card.append(error);gallery.append(card);continue;}
-      try{
-        const {data:file,error:de}=await supabase.storage.from("warehouse-media").download(entry.object_path);
-        if(de)throw de;
-        const url=URL.createObjectURL(file);galleryUrls.push(url);
-        const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer";
-        link.title="Open "+title+" at actual resolution";
-        const img=document.createElement("img");img.src=url;img.alt=title+" stored image";
-        img.style.cssText="width:100%;height:210px;object-fit:contain;background:#090b0e;border-radius:8px";
-        link.append(img);card.append(link);
-        const dimensions=await new Promise(resolve=>{
-          const probe=new Image();probe.onload=()=>resolve(probe.naturalWidth+" × "+probe.naturalHeight+" px");
-          probe.onerror=()=>resolve("Dimensions unavailable");probe.src=url;
-        });
-        const detail=document.createElement("div");detail.className="hint";
-        detail.textContent=dimensions+" · "+sizeLabel(file.size);
-        const filename=document.createElement("div");filename.className="hint";
-        filename.style.cssText="overflow-wrap:anywhere";filename.textContent=entry.original_filename;
-        card.append(detail,filename);loaded++;
-      }catch(e){const error=document.createElement("div");error.className="status bad";error.textContent=e.message||String(e);card.append(error);}
-      gallery.append(card);
-    }
-    status.textContent=loaded+" of "+kinds.length+" stored images loaded. Tap to inspect full resolution.";
-    status.className="status "+(loaded===kinds.length?"good":"bad");
-  }catch(e){status.textContent="Gallery failed: "+(e.message||String(e));status.className="status bad"}
-  finally{btn.disabled=false;}
-});
-$("inspectExif").addEventListener("click",async()=>{
-  const btn=$("inspectExif"),status=$("exifStatus"),out=$("exifResults");
-  btn.disabled=true;out.textContent="";status.textContent="Loading EXIF parser…";status.className="status";
-  try {
-    const exifr=await import("https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.esm.mjs");
-    const {data:bottles,error:be}=await supabase.from("bottles").select("id,created_at,data")
-      .eq("data->attributes->warehouse_test->>kind","image_variants").order("created_at",{ascending:false}).limit(1);
-    if(be)throw be;
-    const bottle=bottles?.[0];if(!bottle)throw new Error("No image-variants test batch exists.");
-    const batchId=bottle.data?.attributes?.warehouse_test?.batch_id;
-    const {data:media,error:me}=await supabase.from("media").select("object_path,notes,original_filename").eq("bottle_id",bottle.id);
-    if(me)throw me;
-    const map=new Map();
-    for(const m of media||[]){
-      try{const n=JSON.parse(m.notes||"{}");if(n.test==="image_variants"&&n.batch_id===batchId)map.set(n.kind,m)}catch(_){}
-    }
-    const results=[];
-    for(const version of ["original",...Array.from(map.keys()).filter(k=>k!=="original").sort((a,b)=>a.localeCompare(b))]){
-      const m=map.get(version);
-      if(!m){results.push({version,error:"Missing stored variant"});continue;}
-      status.textContent="Inspecting "+version+"…";
-      try {
-        const {data:file,error:de}=await supabase.storage.from("warehouse-media").download(m.object_path);
-        if(de)throw de;
-        const metadata=(await exifr.parse(await file.arrayBuffer(),{tiff:true,exif:true,gps:true,iptc:true,xmp:true,icc:true}))||{};
-        const tags=JSON.parse(JSON.stringify(metadata,(_k,v)=>{
-          if(typeof v==="bigint")return String(v);
-          if(v instanceof Uint8Array||v instanceof ArrayBuffer)return "[binary]";
-          if(typeof v==="string"&&v.length>1000)return v.slice(0,1000)+"…";
-          return v;
-        }));
-        results.push({version,filename:m.original_filename,stored_bytes:file.size,tag_count:Object.keys(tags).length,tags});
-      }catch(e){results.push({version,error:e.message||String(e)});}
-      out.textContent=JSON.stringify({bottle_id:bottle.id,batch_id:batchId,cases:results},null,2);
-    }
-    status.textContent="EXIF inspection finished. Original files unchanged.";
-    status.className="status good";
-  }catch(e){status.textContent="EXIF test failed: "+(e.message||String(e));status.className="status bad"}
-  finally{btn.disabled=false;}
-});
-const variantImage=$("variantImage"),uploadVariants=$("uploadVariants"),variantSelected=$("variantSelected"),variantStatus=$("variantStatus"),variantResults=$("variantResults");
-variantImage.addEventListener("change",()=>{
-  const file=variantImage.files?.[0];
-  variantSelected.textContent=file?file.name+" · "+sizeLabel(file.size)+" · "+(file.type||"unknown MIME"):"No image selected.";
-  uploadVariants.disabled=!file;
-  variantResults.textContent="";
-});
-uploadVariants.addEventListener("click",async()=>{
-  const file=variantImage.files?.[0];
-  if(!file)return;
-  uploadVariants.disabled=true;
-  const results=[];
-  let bottleId=null;
-  const batchId=crypto.randomUUID();
-  try {
-    if(!file.type.startsWith("image/"))throw new Error("Please select an image.");
-    variantStatus.textContent="Creating independent JPEGs from original…";
-    const specs=[[null,50],[null,20],[1600,50],[1600,20],[256,100],[256,50]];
-    const derivatives=[];
-    for(const [limit,quality] of specs)derivatives.push(await makeJpegVariant(file,limit,quality));
-    // Test bottle deliberately labelled in the record, never reuses a real collection bottle.
-    const testData={schema_version:1,inventory_domain:"Test / non-collection",
-      identity:{brand:"Warehouse Image Test",product_name:"Image variant experiment"},
-      notes:"Technical media experiment; not a physical collection bottle. Image batch "+batchId,
-      attributes:{warehouse_test:{kind:"image_variants",batch_id:batchId,source_filename:file.name}}};
-    const {data:bottle,error:be}=await supabase.from("bottles").insert({data:testData}).select("id").single();
-    if(be)throw be;
-    bottleId=bottle.id;
-    const files=[{kind:"original",blob:file,name:file.name,mime:file.type||"application/octet-stream",size:file.size},
-      ...derivatives.map(d=>({kind:"jpeg_"+(d.maxDimension===null?"full":d.maxDimension)+"_q"+d.quality,blob:d.blob,name:"variant-"+(d.maxDimension===null?"full":d.maxDimension)+"-q"+d.quality+".jpg",
-        mime:"image/jpeg",size:d.blob.size,width:d.width,height:d.height}))];
-    for(const item of files) {
-      variantStatus.textContent="Uploading "+item.kind+" ("+(results.length+1)+"/"+files.length+")…";
-      const path=bottleId+"/"+batchId+"/"+item.kind+"/"+(item.kind==="original"?encodeURIComponent(file.name||"image"):item.name);
-      const {error:ue}=await supabase.storage.from("warehouse-media").upload(path,item.blob,
-        {contentType:item.mime,upsert:false,cacheControl:"3600"});
-      if(ue)throw ue;
-      const note=JSON.stringify({test:"image_variants",batch_id:batchId,kind:item.kind,
-        max_dimension:item.kind==="original"||item.kind.startsWith("jpeg_full")?null:Number(item.kind.match(/^jpeg_(\d+)/)?.[1]||0),
-        jpeg_quality:item.kind==="original"?null:Number(item.kind.match(/_q(\d+)$/)?.[1]||0),
-        pixel_width:item.width??null,pixel_height:item.height??null,source:"independent_original"});
-      const {error:me}=await supabase.from("media").insert({
-        bottle_id:bottleId,object_path:path,media_type:"photo",view_type:"other",
-        original_filename:item.name,mime_type:item.mime,notes:note,
-        captured_at:file.lastModified?new Date(file.lastModified).toISOString():new Date().toISOString()
-      });
-      if(me)throw me;
-      results.push({kind:item.kind,bytes:item.size,width:item.width??null,height:item.height??null,path});
-      variantResults.textContent=JSON.stringify({bottle_id:bottleId,batch_id:batchId,files:results},null,2);
-    }
-    variantStatus.textContent="Success: original + six JPEG variants stored in Warehouse.";
-    variantStatus.className="status good";
-    variantImage.value="";
-    variantSelected.textContent="No image selected.";
-    await loadWarehouseLists();
-  } catch(error) {
-    variantStatus.textContent="Upload incomplete: "+(error?.message||String(error))+
-      (bottleId?" · Test bottle "+bottleId+" · "+results.length+" of 7 files saved.":"");
-    variantStatus.className="status bad";
-  } finally {uploadVariants.disabled=!variantImage.files?.length;}
-});
-
-const psv=$("pipelineSchema"),recoverBtn=$("pipelineRecover"),recoverId=$("pipelineRecoverId"),pc=$("pipelineCost"),pf=$("pipelineFiles"),pr=$("pipelineRun"),pp=$("pipelinePrimary"),ps=$("pipelineStatus"),pi=$("pipelineImages"),pe=$("pipelineExtraction"),pt=$("pipelineThumbnail"),px=$("pipelineTechnical");
-pf.addEventListener("change",()=>{
- const selected=[...(pf.files||[])];pp.replaceChildren();
- selected.forEach((f,i)=>{const o=document.createElement("option");o.value=String(i);o.textContent=(i+1)+". "+f.name;pp.append(o)});
- pr.disabled=!selected.length||selected.length>12;
- ps.textContent=selected.length>12?"Select no more than 12 photos.":selected.length+" photo(s) selected.";
-});
-function pipelineCard(label,blob,detail){
- const article=document.createElement("article");article.className="item";
- const name=document.createElement("div");name.className="itemtitle";name.textContent=label;
- const img=document.createElement("img");img.src=URL.createObjectURL(blob);img.alt=label;img.style="width:100%;height:205px;object-fit:contain;background:#0b0d11;border-radius:8px;margin-top:8px;cursor:zoom-in";
- img.addEventListener("click",()=>{const dialog=$("photoDialog");$("photoFull").src=img.src;dialog.showModal()});
- const meta=document.createElement("div");meta.className="hint";meta.textContent=detail;
- article.append(name,img,meta);pi.append(article);
-}
+import {createClient} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const supabase=createClient("https://bvunoupmchywlklchscj.supabase.co","sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}});
+const $=id=>document.getElementById(id), uid=()=>supabase.auth.getUser().then(r=>r.data.user?.id);
+const esc=x=>{const d=document.createElement("div");d.textContent=String(x??"");return d.innerHTML;};
+const status=(id,message,bad=false)=>{$(id).textContent=message;$(id).className="status "+(bad?"error":"");};
+const fileName=x=>(x||"photo").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,90);
+const publicThumb=path=>path?supabase.storage.from("warehouse-thumbnails").getPublicUrl(path).data.publicUrl:"";
+let currentBottle=null,mediaCache=[],runCache=[];
+function tab(section){$("inventory").classList.toggle("hidden",section!=="inventory");$("add").classList.toggle("hidden",section!=="add");$("detail").classList.toggle("hidden",section!=="detail");$("tabInventory").classList.toggle("activeTab",section==="inventory");$("tabAdd").classList.toggle("activeTab",section==="add");}
+$("tabInventory").onclick=()=>{tab("inventory");loadInventory()};$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>{tab("inventory");loadInventory()};$("refresh").onclick=loadInventory;
+$("sendLink").onclick=async()=>{const email=$("email").value.trim();const r=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split("?")[0]}});status("loginStatus",r.error?r.error.message:"Check your email for the login link.",!!r.error)};
+$("logout").onclick=async()=>{await supabase.auth.signOut();await refreshAuth()};
+async function refreshAuth(){const {data}=await supabase.auth.getUser();$("login").classList.toggle("hidden",!!data.user);$("app").classList.toggle("hidden",!data.user);$("logout").classList.toggle("hidden",!data.user);if(data.user)await loadInventory();}
+supabase.auth.onAuthStateChange(()=>{refreshAuth()});
+$("files").onchange=()=>{const files=[...$("files").files];$("primary").replaceChildren(...files.map((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=(i+1)+". "+f.name;return o;}))};
 async function cleanedPhoto(file,removeBackground){
  let input=file,mode="orientation + gentle exposure adjustment (background retained)";
  if(removeBackground){
@@ -460,6 +60,7 @@ async function cleanedPhoto(file,removeBackground){
   return {blob,mode,width:w,height:h};
  }finally{image.close();}
 }
+
 async function makePipelineThumbnail(blob){
  const image=await createImageBitmap(blob,{imageOrientation:"from-image"});
  try{
@@ -477,93 +78,96 @@ async function makePipelineThumbnail(blob){
   return {blob:result,base64:btoa(binary),format};
  }finally{image.close();}
 }
-pr.addEventListener("click",async()=>{
- const files=[...(pf.files||[])];if(!files.length||files.length>12)return;
- pr.disabled=true;pi.replaceChildren();pc.textContent="Calculating after extraction…";pe.textContent="";pt.textContent="Waiting for image extraction…";px.textContent="";
- const session=await supabase.auth.getUser();const userId=session.data.user?.id;if(!userId){ps.textContent="Sign in first.";pr.disabled=false;return}
- const runId=crypto.randomUUID(),base="pipeline-tests/"+userId+"/"+runId,paths=[],technical=[];let primaryThumb=null;recoverId.value=runId;
- try{
-  for(let i=0;i<files.length;i++){
-   const file=files[i];if(!file.type.startsWith("image/"))throw Error(file.name+" is not an image");
-   ps.textContent="Photo "+(i+1)+"/"+files.length+": archiving untouched original…";
-   const originalPath=base+"/originals/"+i+"-"+safeName(file.name||"photo");
-   const o=await supabase.storage.from("warehouse-media").upload(originalPath,file,{contentType:file.type||"application/octet-stream",upsert:false});
-   if(o.error)throw Error("Original upload: "+o.error.message);
-   pipelineCard("Original "+(i+1),file,file.name+" · "+sizeLabel(file.size));
-   ps.textContent="Photo "+(i+1)+"/"+files.length+": creating cleaned working image…";
-   const cleaned=await cleanedPhoto(file,$("pipelineRemoveBg").checked);
-   const workingPath=base+"/working/"+i+".jpg";
-   const w=await supabase.storage.from("warehouse-media").upload(workingPath,cleaned.blob,{contentType:"image/jpeg",upsert:false,cacheControl:"3600"});
-   if(w.error)throw Error("Working image upload: "+w.error.message);
-   paths.push(workingPath);if(i===(Number(pp.value)||0))primaryThumb=await makePipelineThumbnail(cleaned.blob);pipelineCard("Working "+(i+1),cleaned.blob,cleaned.width+" × "+cleaned.height+" · "+sizeLabel(cleaned.blob.size)+" · "+cleaned.mode);
-   technical.push({index:i+1,original_path:originalPath,original_bytes:file.size,working_path:workingPath,working_bytes:cleaned.blob.size,cleanup:cleaned.mode});
-   px.textContent=JSON.stringify({run_id:runId,photos:technical},null,2);
-  }
-  ps.textContent="All working images stored. OpenAI is reading the photo group; the primary-photo thumbnail is ready for storage…";
-  if(primaryThumb)pipelineCard("Thumbnail preview (192 × 288)",primaryThumb.blob,"Non-generative · "+sizeLabel(primaryThumb.blob.size));
-  const invoke=await supabase.functions.invoke("warehouse-pipeline-test",{body:{run_id:runId,paths,thumbnail_base64:primaryThumb?.base64}});
-  let result=invoke.data;
-  if(invoke.error){
-    ps.textContent="Connection lost; checking for saved completion…";
-    const retry=await supabase.functions.invoke("warehouse-pipeline-test",{body:{run_id:runId,action:"recover"}});
-    if(retry.error||!retry.data?.success)throw Error("Server response lost and no saved result available yet. Use Recover completed run with this Run ID. "+(invoke.error.message||""));
-    result=retry.data;
-  }
-  if(!result?.success)throw Error(result?.error||"Processing failed");
-  showPipelineResult(result,runId,technical);
-  ps.textContent="Pipeline completed"+(result.recovered?" (recovered from server)":"")+". No permanent inventory bottle was created or modified.";ps.className="status good";
- }catch(err){ps.textContent="Pipeline stopped: "+(err.message||String(err))+". Previously uploaded originals and working images remain in storage. Run ID: "+runId;ps.className="status bad";}
- finally{pr.disabled=false;}
-});
-async function recoverPipelineRun(){
- const runId=recoverId.value.trim();
- if(!/^[a-f0-9-]{36}$/.test(runId)){ps.textContent="Enter a valid Run ID.";return}
- recoverBtn.disabled=true;ps.textContent="Looking for a persisted pipeline result…";
- try{
-  const r=await supabase.functions.invoke("warehouse-pipeline-test",{body:{run_id:runId,action:"recover"}});
-  if(r.error||!r.data?.success)throw Error(r.data?.error||r.error?.message||"Not recovered");
-  showPipelineResult(r.data,runId,[]);
-  ps.textContent="Recovered completed run "+runId+" without re-uploading or re-analyzing.";ps.className="status good";
- }catch(e){ps.textContent="Recovery unavailable: "+(e.message||String(e))+". Older runs completed before persistent results were introduced cannot be recovered this way.";ps.className="status bad"}
- finally{recoverBtn.disabled=false;}
+
+async function storeOriginals(bottleId,files,mode="append"){
+ const records=[];
+ for(let i=0;i<files.length;i++){const f=files[i];const path="bottles/"+bottleId+"/originals/"+crypto.randomUUID()+"-"+fileName(f.name);
+ status(mode==="append"?"detailStatus":"addStatus","Archiving original "+(i+1)+"/"+files.length+"…");
+ const u=await supabase.storage.from("warehouse-media").upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false});
+ if(u.error)throw Error(u.error.message);
+ const record={bottle_id:bottleId,object_path:path,media_type:"photo",view_type:i===0?"front":"other",original_filename:f.name,mime_type:f.type||"application/octet-stream",captured_at:f.lastModified?new Date(f.lastModified).toISOString():new Date().toISOString()};
+ const r=await supabase.from("media").insert(record).select().single();if(r.error)throw Error(r.error.message);
+ records.push(r.data);
+ }return records;
 }
-recoverBtn.addEventListener("click",recoverPipelineRun);
-function showPipelineResult(result,runId,technical){
- psv.textContent=result.schema_version||result.extraction?.schema_version||"Legacy unversioned extraction";
- pe.textContent=result.extraction?JSON.stringify(result.extraction,null,2):result.raw_extraction;
-  const usd=Number(result.cost?.estimated_total_usd??0);
-  const fmt=n=>"$"+Number(n).toFixed(6);
-  pc.replaceChildren();
-  const summary=document.createElement("div");summary.className="itemtitle";summary.textContent="OpenAI extraction: "+fmt(usd)+" (estimated)";
-  const note=document.createElement("div");note.className="hint";note.textContent="Input "+(result.usage?.input_tokens??"?")+" tokens · output "+(result.usage?.output_tokens??"?")+" tokens · thumbnail generation $0.00 (non-generative, local) · background removal runs locally. Supabase storage, transfer, and hosting are not included.";
-  pc.append(summary,note);
-  if(result.thumbnail?.status==="ready"){
-   pt.replaceChildren();const img=document.createElement("img");img.src=result.thumbnail.url;img.alt="Directly derived bottle thumbnail";img.style="width:190px;max-width:100%;border-radius:10px;background:white";pt.append(img);
-   const note=document.createElement("p");note.className="hint";note.textContent="Public, versioned thumbnail · "+result.thumbnail.bytes+" bytes · "+result.thumbnail.url;pt.append(note);
-  }else{pt.textContent="Thumbnail: "+(result.thumbnail?.error||result.thumbnail?.status||"not available")+". Extraction remains available."}
-  px.textContent=JSON.stringify({run_id:runId,schema_version:result.schema_version||null,photos:technical,model:result.model,usage:result.usage,cost:result.cost,thumbnail:result.thumbnail,extraction_prompt:result.prompt},null,2);
+async function processBottle(bottleId,media,primaryId,mode="detail"){
+ const output=mode==="add"?"addStatus":"detailStatus",runId=crypto.randomUUID();
+ const row={id:runId,bottle_id:bottleId,status:"pending",source_media_ids:media.map(m=>m.id),original_image_paths:media.map(m=>m.object_path)};
+ const ins=await supabase.from("bottle_processing_runs").insert(row);if(ins.error)throw Error(ins.error.message);
+ const paths=[];let thumb=null;
+ try{
+ for(let i=0;i<media.length;i++){
+  const m=media[i];status(output,"Cleaning photo "+(i+1)+"/"+media.length+"…");
+  const d=await supabase.storage.from("warehouse-media").download(m.object_path);
+  if(d.error)throw Error(d.error.message);
+  const file=new File([d.data],m.original_filename||("photo-"+i),{type:m.mime_type||"image/jpeg"});
+  const working=await cleanedPhoto(file,$("bg").checked),path="bottles/"+bottleId+"/working/"+runId+"/"+m.id+".jpg";
+  const put=await supabase.storage.from("warehouse-media").upload(path,working.blob,{contentType:"image/jpeg",upsert:false});
+  if(put.error)throw Error(put.error.message);
+  paths.push(path);
+  const update=await supabase.from("media").update({working_path:path,working_mime_type:"image/jpeg"}).eq("id",m.id);
+  if(update.error)throw Error(update.error.message);
+  if(m.id===primaryId)thumb=await makePipelineThumbnail(working.blob);
+ }
+ if(!thumb){const d=await supabase.storage.from("warehouse-media").download(paths[0]);if(d.error)throw Error(d.error.message);thumb=await makePipelineThumbnail(d.data);}
+ status(output,"Extracting facts across all photographs…");
+ const call=await supabase.functions.invoke("warehouse-pipeline-test",{body:{bottle_id:bottleId,run_id:runId,paths,thumbnail_base64:thumb.base64}});
+ let result=call.data;
+ if(call.error){status(output,"Connection interrupted; checking saved results…");const recovered=await supabase.functions.invoke("warehouse-pipeline-test",{body:{bottle_id:bottleId,run_id:runId,action:"recover"}});if(recovered.error||!recovered.data?.success)throw Error("Result may still be processing. Return to this bottle and check its history. Run ID: "+runId);result=recovered.data;}
+ if(!result?.success)throw Error(result?.error||"Extraction unsuccessful");
+ status(output,"Processing completed. Results saved to the database.");return result;
+ }catch(e){await supabase.from("bottle_processing_runs").update({status:"failed",error_message:e.message}).eq("id",runId).eq("status","pending");throw e;}
 }
-
-
-camera.addEventListener("change",()=>{addFiles(camera.files);camera.value=""});
-library.addEventListener("change",()=>{addFiles(library.files);library.value=""});
-
-form.addEventListener("submit",async e=>{
-  e.preventDefault();
-  if(!photos.length){submitStatus.textContent="Add at least one photo.";submitStatus.className="status bad";return}
-  const raw=labelNumber.value.trim();const label=raw?Number(raw):null;const note=notes.value.trim()||null;
-  if(label!==null&&(!Number.isInteger(label)||label<=0)){submitStatus.textContent="Sticker number must be a positive whole number.";submitStatus.className="status bad";return}
-  submit.disabled=true;submitStatus.className="status";
-  try{
-    if(!activeRecordId||activeLabelNumber!==label){submitStatus.textContent="Resolving bottle record…";const {data,error}=await supabase.rpc("warehouse_intake_bottle",{p_label_number:label,p_notes:note});if(error)throw error;activeRecordId=data.record_id;activeLabelNumber=data.label_number??null}
-    const queue=[...photos];let done=0;
-    for(const p of queue){submitStatus.textContent=`Uploading ${done+1} of ${queue.length}…`;const path=activeRecordId+"/"+crypto.randomUUID()+"-"+safeName(p.file.name);const {error:upErr}=await supabase.storage.from("warehouse-media").upload(path,p.file,{contentType:p.file.type||"application/octet-stream",upsert:false});if(upErr)throw upErr;const captured=p.file.lastModified?new Date(p.file.lastModified).toISOString():new Date().toISOString();const {error:mErr}=await supabase.from("media").insert({bottle_id:activeRecordId,object_path:path,media_type:"photo",view_type:p.viewType,original_filename:p.file.name||"camera-photo",mime_type:p.file.type||"application/octet-stream",captured_at:captured});if(mErr){await supabase.storage.from("warehouse-media").remove([path]);throw mErr}done++;removePhoto(p.id)}
-    submitStatus.textContent=(activeLabelNumber?`Bottle ${activeLabelNumber}`:"Unlabeled draft bottle")+` saved with ${done} photo${done===1?"":"s"}.`;submitStatus.className="status good";labelNumber.value="";notes.value="";activeRecordId=null;activeLabelNumber=null;await loadWarehouseLists();
-  }catch(err){console.error(err);submitStatus.textContent=`Upload stopped: ${err?.message||String(err)}.`+(activeRecordId?` Draft record: ${activeRecordId}. Remaining photos are still queued; tap Send to Warehouse to retry.`:"");submitStatus.className="status bad"}finally{submit.disabled=false}
-});
-
-supabase.auth.onAuthStateChange(()=>refreshAuth());
+$("create").onclick=async()=>{
+ const files=[...$("files").files];if(!files.length||files.length>12){status("addStatus","Select 1–12 photos of one bottle.",true);return}
+ $("create").disabled=true;let bottleId=null;
+ try{
+  const label=$("sticker").value.trim();const inserted=await supabase.from("bottles").insert({label_number:label?Number(label):null,data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},processing:{status:"pending"}}}).select("id").single();
+  if(inserted.error)throw Error(inserted.error.message);bottleId=inserted.data.id;
+  const media=await storeOriginals(bottleId,files,"add");
+  await processBottle(bottleId,media,media[Number($("primary").value)||0].id,"add");
+  $("files").value="";$("sticker").value="";await openBottle(bottleId);
+ }catch(e){status("addStatus","Ingestion stopped: "+e.message+(bottleId?" · Bottle ID: "+bottleId:""),true);if(bottleId)await openBottle(bottleId);}
+ finally{$("create").disabled=false}
+};
+async function loadInventory(){
+ const r=await supabase.from("bottles").select("id,label_number,data,created_at").order("created_at",{ascending:false});
+ if(r.error){$("bottleList").textContent=r.error.message;return}
+ const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_identity||b.data?.identity||{};const title=[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const src=publicThumb(b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span></span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
+ $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
+}
+async function signedImage(path){const r=await supabase.storage.from("warehouse-media").createSignedUrl(path,1800);if(r.error)throw Error(r.error.message);return r.data.signedUrl}
+async function showImage(path){$("large").src=await signedImage(path);$("viewer").showModal()}
+$("closeViewer").onclick=()=>$("viewer").close();
+async function openBottle(id){
+ const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
+ if(b.error||m.error||r.error){alert(b.error?.message||m.error?.message||r.error?.message);return}
+ currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
+ const extract=runCache.find(x=>x.status==="completed")?.extraction_json||b.data.data?.processing?.extracted_identity;
+ const ident=extract?.identity||extract||{};$("detailName").textContent=[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
+ $("detailSummary").textContent=[ident.category,ident.region,b.data.label_number?"Warehouse #"+b.data.label_number:""].filter(Boolean).join(" · ");
+ const publicUrl=publicThumb(b.data.data?.processing?.thumbnail_path);$("detailThumb").src=publicUrl||"";$("detailThumb").style.visibility=publicUrl?"visible":"hidden";
+ $("gallery").replaceChildren();for(const [i,media] of mediaCache.entries()){
+ const p=document.createElement("div");p.className="photo";p.innerHTML='<strong>Photo '+(i+1)+'</strong>';
+ const img=document.createElement("img");img.alt="Working image";const path=media.working_path||media.object_path;try{img.src=await signedImage(path)}catch{}
+ img.onclick=()=>showImage(path);p.append(img);
+ const actions=document.createElement("div");actions.className="row";const btn=document.createElement("button");btn.textContent="Original";btn.onclick=()=>showImage(media.object_path);actions.append(btn);
+ const prim=document.createElement("button");prim.textContent=b.data.data?.processing?.primary_media_id===media.id?"Primary ✓":"Set primary";prim.onclick=async()=>{const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:media.id}};const u=await supabase.from("bottles").update({data}).eq("id",id);if(u.error)alert(u.error.message);else await openBottle(id)};actions.append(prim);p.append(actions);$("gallery").append(p);
+ }
+ $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View extraction";button.onclick=()=>showRun(run);item.append(button);$("runs").append(item)}
+ const recent=runCache.find(x=>x.status==="completed");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
+ status("detailStatus",runCache[0]?.status==="failed"?"Last attempt failed: "+runCache[0].error_message:"");
+}
+function showRun(run){$("extraction").textContent=JSON.stringify(run.extraction_json,null,2)||"No data";$("cost").textContent=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated OpenAI cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens"}
+$("reprocess").onclick=async()=>{
+ if(!currentBottle)return;$("reprocess").disabled=true;
+ try{const primary=currentBottle.data?.processing?.primary_media_id||mediaCache[0]?.id;await processBottle(currentBottle.id,mediaCache,primary,"detail");await openBottle(currentBottle.id)}catch(e){status("detailStatus",e.message,true)}finally{$("reprocess").disabled=false}
+};
+$("addPhotos").onclick=()=>$("extraFiles").click();
+$("extraFiles").onchange=async()=>{
+ const files=[...$("extraFiles").files];if(!files.length||!currentBottle)return;
+ try{await storeOriginals(currentBottle.id,files,"append");await openBottle(currentBottle.id);status("detailStatus","Photos archived. Tap Reprocess to include them in extraction.")}catch(e){status("detailStatus",e.message,true)}
+ $("extraFiles").value="";
+};
 await refreshAuth();
-</script>
-</body>
-</html>
+</script></main></body></html>
