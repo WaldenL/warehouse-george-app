@@ -1,0 +1,63 @@
+name: Deploy Warehouse Lambda (Ohio)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: warehouse-lambda-deployment
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  AWS_ACCOUNT_ID: "774281695493"
+  ECR_REPOSITORY: warehouse-george-worker
+  LAMBDA_FUNCTION: warehouse-george-worker
+  EXECUTION_ROLE: arn:aws:iam::774281695493:role/WarehouseGeorgeLambdaExecutionRole
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS authentication via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::774281695493:role/WarehouseGeorgeGitHubDeployRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_REGION" \
+            || aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region "$AWS_REGION"
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Lambda container
+        id: build
+        run: |
+          URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
+          docker build --platform linux/amd64 -t "$URI:${GITHUB_SHA}" -f lambda/Dockerfile lambda
+          docker push "$URI:${GITHUB_SHA}"
+          echo "image_uri=$URI:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update Lambda
+        env:
+          IMAGE_URI: ${{ steps.build.outputs.image_uri }}
+        run: |
+          if aws lambda get-function --function-name "$LAMBDA_FUNCTION" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws lambda update-function-code --function-name "$LAMBDA_FUNCTION" --image-uri "$IMAGE_URI" --region "$AWS_REGION"
+          else
+            aws lambda create-function \
+              --function-name "$LAMBDA_FUNCTION" \
+              --package-type Image --code "ImageUri=$IMAGE_URI" \
+              --role "$EXECUTION_ROLE" --architectures x86_64 \
+              --timeout 900 --memory-size 3072 \
+              --region "$AWS_REGION"
+          fi
+          aws lambda wait function-updated --function-name "$LAMBDA_FUNCTION" --region "$AWS_REGION"
