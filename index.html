@@ -32,8 +32,14 @@ $("passwordSettings").onclick=()=>{$("newPassword").value="";$("confirmPassword"
 $("closePassword").onclick=()=>$("passwordDialog").close();
 $("passwordForm").onsubmit=async e=>{e.preventDefault();const password=$("newPassword").value;if(password!==$("confirmPassword").value){status("passwordStatus","Passwords do not match.",true);return}const {error}=await supabase.auth.updateUser({password});if(error){status("passwordStatus",error.message,true);return}status("passwordStatus","Password saved. You can use it the next time you sign in.");$("newPassword").value="";$("confirmPassword").value=""};
 $("logout").onclick=async()=>{await supabase.auth.signOut();await refreshAuth()};
-async function refreshAuth(){const {data}=await supabase.auth.getUser();$("login").classList.toggle("hidden",!!data.user);$("app").classList.toggle("hidden",!data.user);$("logout").classList.toggle("hidden",!data.user);$("passwordSettings").classList.toggle("hidden",!data.user);if(data.user)await loadInventory();}
-supabase.auth.onAuthStateChange(()=>{refreshAuth()});
+async function refreshAuth(){const {data,error}=await supabase.auth.getUser();if(error){status("loginStatus","Session check: "+error.message,true);}$("login").classList.toggle("hidden",!!data.user);$("app").classList.toggle("hidden",!data.user);$("logout").classList.toggle("hidden",!data.user);$("passwordSettings").classList.toggle("hidden",!data.user);if(data.user)await loadInventory();}
+// Supabase fires auth callbacks while holding its auth lock. Do not call getUser
+// synchronously inside the callback: that can deadlock the login transition.
+supabase.auth.onAuthStateChange((event,session)=>{setTimeout(()=>{refreshAuth().catch(e=>status("loginStatus","Authentication refresh failed: "+e.message,true))},0)});
+const authParams=new URLSearchParams(location.search);
+const authHash=new URLSearchParams(location.hash.replace(/^#/,""));
+const authError=authParams.get("error_description")||authHash.get("error_description")||authParams.get("error")||authHash.get("error");
+if(authError)status("loginStatus","Sign-in link error: "+authError,true);
 let inventoryTimer=null;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!("inventory").classList.contains("hidden"))loadInventory();});
 inventoryTimer=setInterval(()=>{if(!document.hidden&&$("app")&&!$("app").classList.contains("hidden")){if(!$("inventory").classList.contains("hidden"))loadInventory();else if(!$("detail").classList.contains("hidden")&&currentBottle&&runCache.length&&["queued","retry_pending","processing"].includes(runCache[0].status))openBottle(currentBottle.id);}},20000);
@@ -138,5 +144,6 @@ $("extraFiles").onchange=async()=>{
  try{await storeOriginals(currentBottle.id,files,"append");await openBottle(currentBottle.id);status("detailStatus","Photos archived. Tap Reprocess to include them in extraction.")}catch(e){status("detailStatus",e.message,true)}
  $("extraFiles").value="";
 };
+await supabase.auth.initialize();
 await refreshAuth();
 </script></main></body></html>
