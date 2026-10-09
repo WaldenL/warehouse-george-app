@@ -23,7 +23,7 @@ def api(cfg,method,path,payload=None,params=None):
 def storage(cfg,method,bucket,path,body=None,mime=None):
     base=cfg["SUPABASE_URL"].rstrip("/")+"/storage/v1/object/"
     headers={"apikey":cfg["SUPABASE_SERVICE_ROLE_KEY"],"Authorization":"Bearer "+cfg["SUPABASE_SERVICE_ROLE_KEY"]}
-    if mime: headers.update({"Content-Type":mime,"x-upsert":"false"})
+    if mime: headers.update({"Content-Type":mime,"x-upsert":"false","cache-control":"max-age=31536000, immutable" if mime.startswith("image/") else "no-cache"})
     endpoint=base+("authenticated/" if method=="GET" else "")+bucket+"/"+path
     r=requests.request(method,endpoint,headers=headers,data=body,timeout=120)
     if not r.ok: raise RuntimeError("Storage "+method+" failed ("+str(r.status_code)+"): "+r.text[:300])
@@ -105,7 +105,7 @@ def process(event):
         result_path=f"runs/aws/{rid}/result.json"
         artifact={"schema_version":"warehouse_visual_v1_1","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
-        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_aws_v1","prompt_version":"warehouse_visual_v1_1","model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_v1_1","prompt_version":"warehouse_visual_v1_1","model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
             p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_identity":parsed.get("identity"),"extracted_specification":parsed.get("specification")})
