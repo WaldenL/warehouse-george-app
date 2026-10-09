@@ -1,0 +1,43 @@
+name: Deploy Warehouse website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'consent.html'
+      - 'assets/**'
+      - '.nojekyll'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: warehouse-pages-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage website without Lambda or internal workflows
+        run: |
+          mkdir -p site
+          cp index.html consent.html site/
+          if [ -d assets ]; then cp -a assets site/; fi
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
