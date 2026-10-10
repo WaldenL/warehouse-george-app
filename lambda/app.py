@@ -12,6 +12,11 @@ ASSET_DIR=Path(__file__).resolve().parent
 EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction.md").read_text(encoding="utf-8")
 EXTRACTION_SCHEMA=json.loads((ASSET_DIR / "schemas" / "warehouse_visual.json").read_text(encoding="utf-8"))
 THUMBNAIL_PROMPT=(ASSET_DIR / "prompts" / "warehouse_thumbnail_generation.md").read_text(encoding="utf-8")
+PRICING_SOURCE="https://platform.openai.com/pricing/"
+PRICING_DATE="2026-10-10"
+# Standard (non-Batch) USD per million tokens. Snapshot each run's rates.
+EXTRACTION_RATES={"input":0.40,"output":1.60}
+IMAGE_RATES={"text_input":5.00,"image_input":8.00,"image_output":30.00}
 def now(): return datetime.now(timezone.utc).isoformat()
 def secret():
     value=os.environ.get("WAREHOUSE_WORKER_CONFIG","")
@@ -81,11 +86,47 @@ def thumbnail(cfg,run,im):
     path=f"bottles/{run['bottle_id']}/{uuid.uuid4()}.png"
     storage(cfg,"POST","warehouse-thumbnails",path,out.getvalue(),"image/png")
     return path
-def generate_catalog_thumbnail(cfg,run,photos,brief):
-    """Second, generative pass. All originals and working photographs remain untouched."""
-    selected=list(dict.fromkeys(brief.get("canonical_photo_numbers") or [1]))[:3]
-    if not selected or any(not isinstance(n,int) or n<1 or n>len(photos) for n in selected):
-        raise ValueError("No valid reference photographs for thumbnail generation")
+def extraction_cost(usage):
+    inp=int(usage.get("input_tokens") or 0)
+    out=int(usage.get("output_tokens") or 0)
+    estimated=round((inp*EXTRACTION_RATES["input"]+out*EXTRACTION_RATES["output"])/1000000,8)
+    return {"estimated_total_usd":estimated,"currency":"USD","type":"estimate",
+            "pricing_date":PRICING_DATE,"pricing_source":PRICING_SOURCE,
+            "model":"gpt-4.1-mini","rates_usd_per_million_tokens":dict(EXTRACTION_RATES),
+            "token_breakdown":{"input":inp,"output":out}}
+
+
+def image_generation_cost(usage):
+    details=usage.get("input_tokens_details") or {}
+    output_details=usage.get("output_tokens_details") or {}
+    if not isinstance(details.get("text_tokens"),int) or not isinstance(details.get("image_tokens"),int) or not isinstance(output_details.get("image_tokens"),int):
+        return {"status":"unavailable","estimated_total_usd":None,"currency":"USD",
+                "reason":"Image API did not return per-modality token usage",
+                "pricing_date":PRICING_DATE,"pricing_source":PRICING_SOURCE,
+                "model":IMAGE_MODEL,"rates_usd_per_million_tokens":dict(IMAGE_RATES)}
+    text_in=details["text_tokens"]
+    image_in=details["image_tokens"]
+    image_out=output_details["image_tokens"]
+    estimate=round((text_in*IMAGE_RATES["text_input"]+
+                    image_in*IMAGE_RATES["image_input"]+
+                    image_out*IMAGE_RATES["image_output"])/1000000,8)
+    return {"status":"estimated","estimated_total_usd":estimate,"currency":"USD",
+            "type":"estimate","pricing_date":PRICING_DATE,"pricing_source":PRICING_SOURCE,
+            "model":IMAGE_MODEL,"rates_usd_per_million_tokens":dict(IMAGE_RATES),
+            "token_breakdown":{"text_input":text_in,"image_input":image_in,"image_output":image_out}}
+
+
+def generate_catalog_thumbnail(cfg,run,photos,brief,view):
+    """Generate only a photographed front or back face; archive each separately."""
+    if view not in ("front","back"):
+        raise ValueError("Invalid catalog view")
+    selected=list(dict.fromkeys(brief.get(view+"_photo_numbers") or []))[:3]
+    if not selected:
+        return {"status":"not_available","view":view,
+                "reason":"No photograph of the "+view+" face was provided",
+                "source_photo_numbers":[]}
+    if any(not isinstance(n,int) or n<1 or n>len(photos) for n in selected):
+        raise ValueError("Invalid "+view+" photograph reference")
     files=[]
     for n in selected:
         image=photos[n-1].copy()
@@ -93,7 +134,19 @@ def generate_catalog_thumbnail(cfg,run,photos,brief):
         buf=io.BytesIO()
         image.save(buf,"PNG",optimize=True)
         files.append(("image[]",(f"reference_photo_{n}.png",buf.getvalue(),"image/png")))
-    prompt=THUMBNAIL_PROMPT+json.dumps(brief,ensure_ascii=False,indent=2)
+    # Do not include the opposite face's photo references or identity anchors in this request.
+    view_brief={
+        "view":view,
+        "strategy":brief["strategy"],
+        "identity_anchors":brief["identity_anchors"],
+        "view_identity_anchors":brief[view+"_identity_anchors"],
+        "optional_anchors":brief["optional_anchors"],
+        "simplifications_allowed":brief["simplifications_allowed"],
+        "view_notes":brief[view+"_notes"],
+        "shared_notes":brief["notes"],
+        "source_photo_numbers":selected,
+    }
+    prompt=THUMBNAIL_PROMPT+"\n\nREQUESTED FACE: "+view.upper()+"\n"+json.dumps(view_brief,ensure_ascii=False,indent=2)
     response=requests.post(
         "https://api.openai.com/v1/images/edits",
         headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"]},
@@ -114,9 +167,8 @@ def generate_catalog_thumbnail(cfg,run,photos,brief):
     full=io.BytesIO()
     generated.save(full,"PNG",optimize=True)
     bid,rid=run["bottle_id"],run["id"]
-    full_path=f"bottles/{bid}/generated/{rid}/catalog.png"
-    preview_path=f"bottles/{bid}/generated/{rid}/preview.png"
-    # Full resolution is private; the catalog-sized preview is public like existing thumbnails.
+    full_path=f"bottles/{bid}/generated/{rid}/{view}.png"
+    preview_path=f"bottles/{bid}/generated/{rid}/{view}-preview.png"
     storage(cfg,"POST","warehouse-media",full_path,full.getvalue(),"image/png")
     preview=Image.new("RGB",(192,288),(244,244,242))
     scaled=generated.copy()
@@ -125,11 +177,44 @@ def generate_catalog_thumbnail(cfg,run,photos,brief):
     small=io.BytesIO()
     preview.save(small,"PNG")
     storage(cfg,"POST","warehouse-thumbnails",preview_path,small.getvalue(),"image/png")
-    return {"status":"completed","kind":"ai_generated_catalog_depiction",
+    usage=payload.get("usage") or {}
+    return {"status":"completed","kind":"ai_generated_catalog_depiction","view":view,
             "model":IMAGE_MODEL,"prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16],
             "source_photo_numbers":selected,"full_image_path":full_path,"preview_path":preview_path,
-            "size":[generated.width,generated.height],"usage":payload.get("usage") or {},
-            "generated_at":now()}
+            "size":[generated.width,generated.height],"usage":usage,
+            "cost_json":image_generation_cost(usage),"generated_at":now()}
+
+
+def generate_catalog_views(cfg,run,photos,brief):
+    views={}
+    for view in ("front","back"):
+        try:
+            views[view]=generate_catalog_thumbnail(cfg,run,photos,brief,view)
+        except Exception as exc:
+            print(json.dumps({"stage":"catalog_generation","view":view,"run_id":run["id"],
+                              "warning":str(exc)[:400]}))
+            views[view]={"status":"failed","view":view,"model":IMAGE_MODEL,
+                         "error":str(exc)[:500],"attempted_at":now(),
+                         "source_photo_numbers":brief.get(view+"_photo_numbers") or []}
+    statuses=[views[v]["status"] for v in ("front","back")]
+    if "failed" in statuses:
+        overall="partial" if "completed" in statuses else "failed"
+    elif "completed" in statuses:
+        overall="completed"
+    else:
+        overall="not_available"
+    costs=[views[v].get("cost_json",{}).get("estimated_total_usd") for v in ("front","back")
+           if views[v]["status"]=="completed"]
+    complete=all(v is not None for v in costs) and "failed" not in statuses
+    estimated=round(sum(v for v in costs if v is not None),8)
+    return {"kind":"ai_generated_catalog_depictions","status":overall,"model":IMAGE_MODEL,
+            "front":views["front"],"back":views["back"],
+            "cost_json":{"currency":"USD","type":"estimate",
+                         "estimated_total_usd":estimated if complete else None,
+                         "known_estimated_usd":estimated,"status":"complete" if complete else "partial",
+                         "pricing_date":PRICING_DATE,"pricing_source":PRICING_SOURCE,
+                         "rates_usd_per_million_tokens":dict(IMAGE_RATES)}}
+
 
 def extract(cfg,run,paths,additional_instructions=''):
     import base64
@@ -144,7 +229,7 @@ def extract(cfg,run,paths,additional_instructions=''):
     result=response.json()
     output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
     parsed=json.loads(output)
-    if parsed.get("schema_version")!="warehouse_visual_observations_v1":raise ValueError("Extraction schema version mismatch")
+    if parsed.get("schema_version")!="warehouse_visual_observations_v2":raise ValueError("Extraction schema version mismatch")
     # An observation and its evidence are one atomic record, never separate lists.
     observations=parsed.get("observations",[])
     for obs in observations:
@@ -154,6 +239,14 @@ def extract(cfg,run,paths,additional_instructions=''):
         if any(not isinstance(n,int) or n<1 or n>len(paths) for n in obs["photos"]):
             raise ValueError("Invalid photograph reference: "+field)
     brief=parsed["thumbnail_brief"]
+    for view in ("front","back"):
+        refs=brief[view+"_photo_numbers"]
+        if any(not isinstance(n,int) or n<1 or n>len(paths) for n in refs):
+            raise ValueError("Invalid "+view+" photograph reference")
+    if not brief["front_photo_numbers"]:
+        raise ValueError("Catalog front must have a photographed reference")
+    if set(brief["front_photo_numbers"]) & set(brief["back_photo_numbers"]):
+        raise ValueError("Front and back must have disjoint source photographs")
     if any(not isinstance(n,int) or n<1 or n>len(paths) for n in brief["canonical_photo_numbers"]):
         raise ValueError("Thumbnail brief references an invalid photograph")
     return parsed,result.get("usage",{}),result.get("model","gpt-4.1-mini")
@@ -187,30 +280,38 @@ def process(event):
         thumb=thumbnail(cfg,run,photos[primary])
         extra=(bottle[0].get("data") or {}).get("processing",{}).get("additional_instructions","") if bottle else ""
         parsed,usage,model=extract(cfg,run,paths,extra)
-        cost={"estimated_total_usd":round(((usage.get("input_tokens") or 0)*0.4+(usage.get("output_tokens") or 0)*1.6)/1000000,8)}
-        # Generation is deliberately isolated: a failed or unavailable image model
-        # must not invalidate a successful evidence-based bottle extraction.
-        try:
-            generation=generate_catalog_thumbnail(cfg,run,photos,parsed["thumbnail_brief"])
-        except Exception as exc:
-            print(json.dumps({"stage":"catalog_generation","run_id":rid,"warning":str(exc)[:400]}))
-            generation={"status":"failed","kind":"ai_generated_catalog_depiction",
-                        "model":IMAGE_MODEL,"error":str(exc)[:500],"attempted_at":now(),
-                        "source_photo_numbers":parsed["thumbnail_brief"].get("canonical_photo_numbers") or [],
-                        "prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16]}
-        generated_preview=generation.get("preview_path")
+        cost=extraction_cost(usage)
+        # Image generation is isolated from evidence extraction; missing back photos
+        # produce an explicit not_available status, never a fabricated image.
+        generation=generate_catalog_views(cfg,run,photos,parsed["thumbnail_brief"])
+        front_preview=generation["front"].get("preview_path")
+        back_preview=generation["back"].get("preview_path")
+        gen_estimate=generation["cost_json"]["estimated_total_usd"]
+        cost.update({
+            "extraction_estimated_usd":cost["estimated_total_usd"],
+            "front_image_estimated_usd":generation["front"].get("cost_json",{}).get("estimated_total_usd"),
+            "back_image_estimated_usd":generation["back"].get("cost_json",{}).get("estimated_total_usd"),
+            "image_generation_estimated_usd":gen_estimate,
+            "image_generation_known_estimated_usd":generation["cost_json"]["known_estimated_usd"],
+            "combined_estimated_total_usd":round(cost["estimated_total_usd"]+gen_estimate,8) if gen_estimate is not None else None,
+            "estimation_status":generation["cost_json"]["status"],
+            "image_pricing":{"model":IMAGE_MODEL,"pricing_date":PRICING_DATE,
+                             "pricing_source":PRICING_SOURCE,
+                             "rates_usd_per_million_tokens":dict(IMAGE_RATES)}
+        })
         result_path=f"runs/aws/{rid}/result.json"
-        artifact={"generator_commit":GENERATOR_COMMIT,"schema_version":"warehouse_visual_observations_v1",
+        artifact={"generator_commit":GENERATOR_COMMIT,"schema_version":"warehouse_visual_observations_v2",
                   "extraction":parsed,"model":model,"usage":usage,"cost":cost,
                   "thumbnail_generation":generation,"thumbnail_generation_prompt":THUMBNAIL_PROMPT,
                   "background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
-        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"generated_thumbnail_path":generated_preview,"generation_json":generation,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v2","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"generated_thumbnail_path":front_preview,"generated_back_thumbnail_path":back_preview,"generation_json":generation,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
             facts={o["field"]:o["value"] for o in parsed["observations"]}
             p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,
-                      "generated_thumbnail_path":generated_preview,
+                      "generated_thumbnail_path":front_preview,
+                      "generated_back_thumbnail_path":back_preview,
                       "thumbnail_generation_status":generation["status"],
                       "extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
             data["processing"]=p
@@ -218,7 +319,9 @@ def process(event):
         return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,
                 "photos":len(paths),"background_fallback":len(fallback),
                 "thumbnail_generation_status":generation["status"],
-                "generated_thumbnail_path":generated_preview}
+                "generated_thumbnail_path":front_preview,
+                "generated_back_thumbnail_path":back_preview,
+                "combined_estimated_total_usd":cost["combined_estimated_total_usd"]}
     except Exception as err:
         print(traceback.format_exc())
         state="failed"
