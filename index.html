@@ -415,7 +415,7 @@ $("saveName").onclick=async()=>{
  $("saveName").disabled=true;
  try{
   const name=$("editTitle").value.trim();
-  const data={...currentBottle.data,identity:{...(currentBottle.data.identity||{}),product_name:name||"Pending visual identification"}};
+  const data={...currentBottle.data,identity:{...(currentBottle.data.identity||{}),product_name:name||"Pending visual identification",name_source:name?"manual":null,identification_status:name?"user_edited":"unknown"}};
   const {error}=await supabase.from("bottles").update({data}).eq("id",currentBottle.id);
   if(error)throw Error(error.message);
   await openBottle(currentBottle.id);
