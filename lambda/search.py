@@ -94,7 +94,7 @@ def interpret_search(event,cfg):
         filters=parsed["filters"]
         # A defensive correction for an explicit broad wine request: the AI
         # previously dropped "wines" entirely, showing every bottle.
-        if not parsed.get("error") and re.search(r"\\bwines?\\b",query,re.I) and not any(
+        if not parsed.get("error") and re.search(r"\bwines?\b",query,re.I) and not any(
                 filters.get(key) for key in ("category","grape","text")):
             filters["category"]="wine"
             parsed["interpretation"]="Wines"+(
@@ -102,7 +102,7 @@ def interpret_search(event,cfg):
                     filters.get(k) is not None for k in filters if k!="category") else "")
         # Fail closed if a restrictive request was somehow parsed as "all".
         if not parsed.get("error") and not any(v is not None and v!="" for v in filters.values()):
-            if not re.search(r"\\b(bottles?|collection|inventory)\\b",query,re.I):
+            if not re.search(r"\b(bottles?|collection|inventory)\b",query,re.I):
                 return {"status":"invalid_interpretation",
                         "error":"Search couldn't identify a filter. Please rephrase."}
         return {"status":"ok","interpretation":str(parsed.get("interpretation",""))[:250],
