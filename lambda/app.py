@@ -86,7 +86,7 @@ def extract(cfg,run,paths,additional_instructions=''):
     for i,path in enumerate(paths):
         b=storage(cfg,"GET","warehouse-media",path)
         content.extend([{"type":"input_text","text":f"Working photo {i+1}"},{"type":"input_image","image_url":"data:image/png;base64,"+base64.b64encode(b).decode(),"detail":"high"}])
-    response=requests.post("https://api.openai.com/v1/responses",headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},json={"model":"gpt-4.1-mini","store":False,"max_output_tokens":3500,"text":{"format":{"type":"json_schema","name":"warehouse_visual_observations_v1","strict":True,"schema":EXTRACTION_SCHEMA}},"input":[{"role":"user","content":content}]},timeout=180)
+    response=requests.post("https://api.openai.com/v1/responses",headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},json={"model":"gpt-4.1-mini","store":False,"max_output_tokens":4500,"text":{"format":{"type":"json_schema","name":"warehouse_visual_observations_v1","strict":True,"schema":EXTRACTION_SCHEMA}},"input":[{"role":"user","content":content}]},timeout=180)
     response.raise_for_status()
     result=response.json()
     output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
@@ -100,6 +100,9 @@ def extract(cfg,run,paths,additional_instructions=''):
             raise ValueError("Observation missing value or photo evidence: "+field)
         if any(not isinstance(n,int) or n<1 or n>len(paths) for n in obs["photos"]):
             raise ValueError("Invalid photograph reference: "+field)
+    brief=parsed["thumbnail_brief"]
+    if any(not isinstance(n,int) or n<1 or n>len(paths) for n in brief["canonical_photo_numbers"]):
+        raise ValueError("Thumbnail brief references an invalid photograph")
     return parsed,result.get("usage",{}),result.get("model","gpt-4.1-mini")
 def process(event):
     cfg=secret()
