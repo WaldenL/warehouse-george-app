@@ -23,15 +23,19 @@ Never introduce a number, name, date, or designation from these instructions int
 Return only JSON adhering to the supplied schema. Omit unobserved facts entirely: no null observations, no placeholders, no not_seen/not_visible/unknown values. Arrays may be empty. Do not invent, duplicate fields, or promote administrative dates to production dates. Treat ambiguous numbers as unclassified_numbers and preserve their literal text. A clearly labeled 'Barrel No.' must produce a barrel_number observation with the same numeral and photograph reference; never leave it only in a transcription. Ignore the standard government health warning entirely, including in label_transcriptions.
 
 ## Thumbnail brief (planning only — no image generation)
-Return a top-level `thumbnail_brief` describing how a later OpenAI image-generation step should depict THIS exact physical bottle, using the supplied photographs as the authoritative visual references. This brief is not a verified inventory fact and must not contaminate the observations.
+Produce the top-level `thumbnail_brief` so that a later OpenAI image generator can faithfully depict THIS particular physical bottle from the reference photos. The objective is recognition of the actual bottle, not catalog completeness, factual extraction, generic brand recognition, or merely a pretty image.
 
-- `strategy`: `label_forward` when labels distinguish this bottle most, `shape_forward` when its silhouette is most distinctive, otherwise `balanced`.
-- `canonical_photo_numbers`: 1-based references to the best one or more photographs for generating an accurate representative thumbnail. Reference only photographs supplied in this pass.
-- `show_full_bottle`: ordinarily true; use false only when a close detail is more recognizable.
-- `tight_crop`: whether a close frame is helpful while retaining the intended visual context.
-- `identity_anchors`: concise, visually verified features that MUST be preserved, including distinctive shape, label design and legible identity-critical text, capsule, markings, and liquid level where applicable. Never invent label text.
-- `optional_anchors`: secondary visible features worth retaining if possible.
-- `simplifications_allowed`: fine print or microdetails that may be simplified for thumbnail readability; never authorize substitution of a generic or fictitious bottle.
-- `notes`: optional short depiction instruction relevant to this particular bottle, or null.
+Before choosing anchors, assess ALL supplied photographs together for visual distinctiveness:
+1. Silhouette, proportions, glass color, closure, capsule color and unusual shape.
+2. Primary label design: geometry, color, artwork, typography, prominent text, placement.
+3. Secondary features: neck labels, bespoke selection names, markings, handwritten identifiers, stickers, seals, numbered editions.
+4. Contents and condition: visible liquid color and distinctive fill level when relevant to faithful depiction.
+5. Which traits separate this bottle from others of the SAME brand or expression?
 
-Aim for faithful recognizability of the actual bottle, not generic attractiveness. Studio lighting and a clean subtle neutral background can be applied later by a fixed house style prompt, so do not ask for unrelated scenery or stylistic embellishment. The thumbnail brief is a separate planning artifact; do not use it as independent evidence for extraction fields.
+Choose approximately 4–8 concrete `identity_anchors` supported by the photos. These are MUST-preserve visual traits: prioritize things that are distinctive, conspicuous, or would make a generated depiction look like the wrong bottle if omitted or changed. Do not automatically prioritize brand, producer, spirit category, proof, ABV, or technical production fields simply because they are easy to extract. Do not automatically prioritize handwriting either: judge its visual significance. Include both recognition traits (distinctive markings, labels, silhouette) and faithfulness traits (proportions, dominant colors, fill level). Describe WHAT THE GENERATOR MUST SHOW, not schema or database field names. For instance, specify the actual shape, color, relative location, design, or verified lettering rather than writing `closure_description` or `abv_percent`.
+
+Use `optional_anchors` for genuinely secondary features whose absence would not impair recognition. Use `simplifications_allowed` ONLY for real visual details that are safely simplified at thumbnail size, such as microscopic legal print or intricate hairline ornamentation. Never put database field names in `simplifications_allowed`.
+
+Choose `strategy` as `label_forward`, `shape_forward`, or `balanced` according to which visual features best distinguish THIS bottle, not which facts are easy to read. Choose `canonical_photo_numbers` from the actual 1-based photo sequence: prefer the clearest image of its recognizably distinctive presentation, and include supplementary views whenever they uniquely establish critical features. Set `show_full_bottle` and `tight_crop` according to faithful recognition at small size (normally show the whole bottle). In `notes`, add only bottle-specific depiction guidance, or null. The later generator will apply a consistent restrained studio style; do not ask for irrelevant decoration or a fictitious redesign.
+
+Before returning, CHECK the brief internally: Could this depict a generic same-brand bottle? Did you omit a notable capsule, neck label, special graphic, handwritten selection marking, fill level, or shape? Did you overemphasize technical data rather than visual identity? Would a collector recognize this specific bottle when the result is small? Revise the anchors if too generic. Do not generate the thumbnail now. The brief is NOT independent evidence for inventory observations.
