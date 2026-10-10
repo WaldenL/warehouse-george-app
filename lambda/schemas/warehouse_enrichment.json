@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "background_information",
+    "tasting_notes",
+    "flavor_profile",
+    "food_pairings",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "warehouse_enrichment_v1"
+    },
+    "background_information": {
+      "type": "string"
+    },
+    "tasting_notes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "nose",
+        "palate",
+        "finish"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "nose": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "palate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "finish": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "flavor_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sweetness",
+        "fruit",
+        "oak",
+        "spice",
+        "smoke",
+        "richness",
+        "floral",
+        "herbal",
+        "savory",
+        "acidity",
+        "tannin",
+        "descriptors"
+      ],
+      "properties": {
+        "sweetness": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "fruit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "oak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "spice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "smoke": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "richness": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "floral": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "herbal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "savory": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "acidity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "tannin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "descriptors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "food_pairings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "category",
+          "examples",
+          "rationale"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "url",
+          "source_type"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
