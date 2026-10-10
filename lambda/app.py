@@ -127,7 +127,8 @@ def process(event):
         api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
-            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb})
+            facts={o["field"]:o["value"] for o in parsed["observations"]}
+            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
             data["processing"]=p
             api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
         return {"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
