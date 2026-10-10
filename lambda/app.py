@@ -456,7 +456,7 @@ def enrich(event):
         return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"bottle_id":run["bottle_id"],"cost_json":cost}
     except Exception as err:
         print(traceback.format_exc())
-        api(cfg,"PATCH","bottle_enrichment_runs",{"status":"failed","error_message":str(err)[:1000],"completed_at":now()},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"failed","error_message":str(err)[:1000],"completed_at":now()},params={"id":"eq."+rid})
         return {"generator_commit":GENERATOR_COMMIT,"status":"failed","id":rid,"error":str(err)[:500]}
 
 def handler(event,context):
