@@ -240,8 +240,8 @@ async function queueEnrichment(){
  if(!currentBottle)return;
  $("enrichBottle").disabled=true;status("enrichmentStatus","Queueing web research…");
  try{
-  const row={bottle_id:currentBottle.id,status:"queued"};
-  const inserted=await supabase.from("bottle_enrichment_runs").insert(row).select("id").single();
+  const row={bottle_id:currentBottle.id,status:"queued",run_type:"research_enrichment"};
+  const inserted=await supabase.from("bottle_processing_runs").insert(row).select("id").single();
   if(inserted.error)throw Error(inserted.error.message);
   const dispatched=await supabase.functions.invoke("warehouse-dispatch",{body:{enrichment_run_id:inserted.data.id}});
   if(dispatched.error||!dispatched.data?.accepted)throw Error(dispatched.data?.error||dispatched.error?.message||"Research dispatch failed");
@@ -266,7 +266,7 @@ async function openBottle(id){
  $("markOpen").disabled=isLocked||bottleStatus==="open"||bottleStatus==="removed";
  $("markOpen").title=isLocked?"Unlock this bottle before marking it open":bottleStatus==="removed"?"Removed bottles cannot be marked open here":bottleStatus==="open"?"Bottle is already marked open":"";
  $("nameEditor").classList.add("hidden");$("editTitle").value=d.identity?.product_name==="Pending visual identification"?"":(d.identity?.product_name||"");$("editSticker").value=b.data.label_number??"";$("editState").value=["sealed","open","removed","uncertain"].includes(d.state?.status)?d.state.status:"uncertain";$("editNotes").value=d.notes||"";$("editDetails").value=Object.entries(d.verified_facts||{}).map(([k,v])=>k+" = "+v).join("\n");$("researchInstructions").value=d.research?.instructions||"";$("researchDetails").textContent=d.research?.status&&d.research.status!=="none"?"Status: "+d.research.status+" · Requested: "+(d.research.requested_at||"unknown"):"No research requested.";
- const extract=(runCache.find(x=>x.id===d.processing?.latest_run_id&&x.extraction_json)||runCache.find(x=>x.extraction_json))?.extraction_json;
+ const extract=(runCache.find(x=>x.run_type!=="research_enrichment"&&x.id===d.processing?.latest_run_id&&x.extraction_json)||runCache.find(x=>x.run_type!=="research_enrichment"&&x.extraction_json))?.extraction_json;
  renderDossier(extract,b.data);
  const observed=Object.fromEntries((extract?.observations||[]).filter(o=>o.field&&o.value).map(o=>[o.field,o.value]));
  const facts=obsMap(extract);const ident={brand:facts.brand?.[0]?.value,expression:facts.expression?.[0]?.value,category:facts.category?.[0]?.value,region:facts.region?.[0]?.value};$("detailName").textContent=bottleDisplayName(d,observed);
@@ -313,10 +313,10 @@ async function openBottle(id){
  };
  actions.append(remove);p.append(actions);$("gallery").append(p);
  }
- $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";const gen=run.generation_json;const viewStatus=gen?.front?("Front: "+gen.front.status+" · Back: "+gen.back.status):(gen?"Front (legacy): "+gen.status:"");item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+(viewStatus?' · '+esc(viewStatus):'')+'</div><div class="tiny">'+esc(runCostText(run))+'</div>';const button=document.createElement("button");button.textContent="View full JSON";button.onclick=()=>{showRun(run);$("rawExtraction").open=true};item.append(button);$("runs").append(item)}
+ $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";const research=run.run_type==="research_enrichment";const gen=run.generation_json;const viewStatus=!research&&(gen?.front?("Front: "+gen.front.status+" · Back: "+gen.back.status):(gen?"Front (legacy): "+gen.status:""));item.innerHTML='<strong>'+esc(research?"Research enrichment":"Photo extraction")+' · '+esc(run.status)+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+(viewStatus?' · '+esc(viewStatus):'')+'</div><div class="tiny">'+esc(research?("Estimated enrichment cost · "+usdEstimate(run.cost_json?.estimated_total_usd)+" · "+(run.usage_json?.total_tokens??"unknown")+" tokens"+(run.cost_json?.web_search_calls!=null?" · "+run.cost_json.web_search_calls+" web searches":"")):runCostText(run))+'</div>';const button=document.createElement("button");button.textContent="View full JSON";button.onclick=()=>{showRun(run);$("rawExtraction").open=true};item.append(button);$("runs").append(item)}
  const latestRun=runCache[0],lastSuccessful=runCache.find(x=>x.status==="completed");
  $("processingSummary").textContent=latestRun?(()=>{const fmt=x=>x?new Date(x).toLocaleString():"—";return ["Last requested: "+fmt(latestRun.created_at),"Last started: "+fmt(latestRun.started_at||latestRun.claimed_at),"Last completed: "+fmt(lastSuccessful?.completed_at)].join(" · ")})():"No processing history yet.";
- const recent=runCache.find(x=>x.status==="completed");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
+ const recent=runCache.find(x=>x.status==="completed"&&x.run_type!=="research_enrichment");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
  status("detailStatus",runCache[0]?.status==="failed"?"Last attempt failed: "+runCache[0].error_message:(runCache[0]&&runCache[0].status!=="completed"?"Latest job: "+runCache[0].status+". Processing continues on the server.":""));
 }
 const usdEstimate=v=>v==null?"unavailable":"$"+Number(v).toFixed(5);
@@ -336,13 +336,14 @@ function runCostText(run){
 async function showRun(run){
  if(currentBottle&&run.extraction_json)renderDossier(run.extraction_json,currentBottle);
  const token=++displayedRunToken;
- const summary=(run.schema_version||"")+" · "+runCostText(run)+" · "+(run.usage_json?.total_tokens||"")+" extraction tokens";
+ const research=run.run_type==="research_enrichment";
+ const summary=research?("Research enrichment · Estimated "+usdEstimate(run.cost_json?.estimated_total_usd)+" · "+(run.usage_json?.total_tokens??"unknown")+" tokens"):((run.schema_version||"")+" · "+runCostText(run)+" · "+(run.usage_json?.total_tokens||"")+" extraction tokens");
  $("cost").textContent=summary;
  $("extraction").textContent="Loading complete archived generator result…";
  try{
   let artifact=generatorArtifactCache.get(run.id);
   if(!artifact){
-   const path="runs/aws/"+run.id+"/result.json";
+   const path="runs/aws/"+run.id+(research?"/enrichment-response.json":"/result.json");
    const {data,error}=await supabase.storage.from("warehouse-media").download(path);
    if(error)throw Error(error.message);
    artifact=JSON.parse(await data.text());
