@@ -81,11 +81,8 @@ def extract(cfg,run,paths):
     if parsed.get("schema_version")!="warehouse_visual_observations_v1":raise ValueError("Extraction schema version mismatch")
     # An observation and its evidence are one atomic record, never separate lists.
     observations=parsed.get("observations",[])
-    seen=set()
     for obs in observations:
         field=obs["field"]
-        if field in seen: raise ValueError("Duplicate observation field: "+field)
-        seen.add(field)
         if not obs["value"].strip() or not obs["evidence_text"].strip() or not obs["photos"]:
             raise ValueError("Observation missing value or photo evidence: "+field)
         if any(not isinstance(n,int) or n<1 or n>len(paths) for n in obs["photos"]):
