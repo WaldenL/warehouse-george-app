@@ -27,6 +27,7 @@
 <dialog id="viewer"><button id="closeViewer">Close</button><img id="large" alt="Bottle photograph"></dialog>
 <script type="module">
 import {createClient} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import {bottleDisplayName} from "./assets/bottle-naming.mjs";
 const supabase=createClient("https://bvunoupmchywlklchscj.supabase.co","sb_publishable_joqvdgGLpzQN4TpUjBpPaw_53w1fxpH",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"warehouse-george-auth"}});
 const $=id=>document.getElementById(id), uid=()=>supabase.auth.getUser().then(r=>r.data.user?.id);
 const esc=x=>{const d=document.createElement("div");d.textContent=String(x??"");return d.innerHTML;};
@@ -153,7 +154,7 @@ async function loadInventory(page=inventoryPage){
  $("refresh").disabled=true;
  let r;
  try{
-  r=await supabase.rpc("warehouse_filter_bottles",{
+  r=await supabase.rpc("warehouse_filter_bottles_v2",{
    p_filters:inventoryFilters,p_limit:inventoryPageSize,p_offset:nextPage*inventoryPageSize
   });
  }catch(e){
@@ -175,9 +176,7 @@ async function loadInventory(page=inventoryPage){
  $("prevPage").disabled=inventoryPage===0;
  $("nextPage").disabled=last>=total;
  $("bottleList").innerHTML=list.map(b=>{
-  const x=b.data?.processing?.extracted_summary||b.data?.identity||{};
-  const manualName=b.data?.identity?.product_name;
-  const title=(manualName&&manualName!=="Pending visual identification"?manualName:"")||[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";
+  const title=bottleDisplayName(b.data,b.observed||{});
   const src=publicThumb(b.data?.processing?.generated_thumbnail_path||b.data?.processing?.generated_back_thumbnail_path||b.data?.processing?.thumbnail_path);
   const tags=(b.data?.attributes?.warehouse_lock?.locked===true?'<span class="lock-tag">🔒 Locked</span>':"")+
    (b.data?.state?.status==="open"?'<span class="open-tag">Open</span>':"")+
@@ -228,9 +227,10 @@ async function openBottle(id){
  $("toggleLock").setAttribute("aria-pressed",String(isLocked));
  $("detailLockStatus").classList.toggle("hidden",!isLocked);
  $("nameEditor").classList.add("hidden");$("editTitle").value=d.identity?.product_name==="Pending visual identification"?"":(d.identity?.product_name||"");$("editSticker").value=b.data.label_number??"";$("editState").value=["sealed","open","removed","uncertain"].includes(d.state?.status)?d.state.status:"uncertain";$("editNotes").value=d.notes||"";$("editDetails").value=Object.entries(d.verified_facts||{}).map(([k,v])=>k+" = "+v).join("\n");$("researchInstructions").value=d.research?.instructions||"";$("researchDetails").textContent=d.research?.status&&d.research.status!=="none"?"Status: "+d.research.status+" · Requested: "+(d.research.requested_at||"unknown"):"No research requested.";
- const extract=runCache.find(x=>x.status==="completed")?.extraction_json;
+ const extract=(runCache.find(x=>x.id===d.processing?.latest_run_id&&x.extraction_json)||runCache.find(x=>x.extraction_json))?.extraction_json;
  renderDossier(extract,b.data);
- const facts=obsMap(extract);const ident={brand:facts.brand?.[0]?.value,expression:facts.expression?.[0]?.value,category:facts.category?.[0]?.value,region:facts.region?.[0]?.value};$("detailName").textContent=(d.identity?.product_name&&d.identity.product_name!=="Pending visual identification"?d.identity.product_name:"")||[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
+ const observed=Object.fromEntries((extract?.observations||[]).filter(o=>o.field&&o.value).map(o=>[o.field,o.value]));
+ const facts=obsMap(extract);const ident={brand:facts.brand?.[0]?.value,expression:facts.expression?.[0]?.value,category:facts.category?.[0]?.value,region:facts.region?.[0]?.value};$("detailName").textContent=bottleDisplayName(d,observed);
  $("detailSummary").textContent=[ident.category,ident.region,b.data.label_number?"Warehouse #"+b.data.label_number:""].filter(Boolean).join(" · ");
  const p=d.processing||{};
  const generatedUrl=publicThumb(p.generated_thumbnail_path),backUrl=publicThumb(p.generated_back_thumbnail_path),photoUrl=publicThumb(p.thumbnail_path);
