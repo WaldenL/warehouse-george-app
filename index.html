@@ -12,7 +12,7 @@
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editTitle">Bottle name / description</label><input id="editTitle" placeholder="Optional manually verified name" style="width:100%"><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
 <section class="card"><h2>Bottle dossier</h2><p class="dossier-note">Photograph-derived observations are preliminary and not verified inventory facts. Unknown fields are omitted; original evidence remains available below.</p><div id="bottleDossier"></div></section>
 <section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div id="gallery" class="photo-grid"></div></section>
-<section class="card"><details id="rawExtraction"><summary>Technical extraction JSON</summary><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></details></section>
+<section class="card"><details id="rawExtraction"><summary>Complete generator JSON</summary><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></details></section>
 <section class="card"><h2>Processing history</h2><div id="runs"></div></section></section></div>
 <dialog id="passwordDialog"><form id="passwordForm"><h2>Set or change password</h2><p class="muted">Choose a password of at least 12 characters. This works for an existing signed-in Warehouse account; it does not create a new account.</p><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><label for="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required><p id="passwordStatus" class="status"></p><div class="row"><button type="submit" class="primary">Save password</button><button type="button" id="closePassword">Cancel</button></div></form></dialog>
 <dialog id="viewer"><button id="closeViewer">Close</button><img id="large" alt="Bottle photograph"></dialog>
@@ -25,6 +25,7 @@ const status=(id,message,bad=false)=>{$(id).textContent=message;$(id).className=
 const fileName=x=>(x||"photo").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,90);
 const publicThumb=path=>path?supabase.storage.from("warehouse-thumbnails").getPublicUrl(path).data.publicUrl:"";
 let currentBottle=null,mediaCache=[],runCache=[];
+const generatorArtifactCache=new Map();let displayedRunToken=0;
 function tab(section){$("inventory").classList.toggle("hidden",section!=="inventory");$("add").classList.toggle("hidden",section!=="add");$("detail").classList.toggle("hidden",section!=="detail");$("tabInventory").classList.toggle("activeTab",section==="inventory");$("tabAdd").classList.toggle("activeTab",section==="add");}
 $("tabInventory").onclick=()=>{tab("inventory");loadInventory()};$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>{tab("inventory");loadInventory()};$("refresh").onclick=loadInventory;
 $("loginForm").onsubmit=async e=>{e.preventDefault();$("signIn").disabled=true;try{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});status("loginStatus",error?error.message:"Signed in.",!!error);if(!error){$("password").value="";await refreshAuth()}}finally{$("signIn").disabled=false}};
@@ -117,6 +118,7 @@ function renderDossier(extraction,bottle){
  $("bottleDossier").innerHTML=html||'<p class="muted">No extracted observations yet.</p>';
 }
 async function openBottle(id){
+ displayedRunToken++;
  const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).is("removed_at",null).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
  if(b.error||m.error||r.error){alert(b.error?.message||m.error?.message||r.error?.message);return}
  currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
@@ -149,13 +151,38 @@ async function openBottle(id){
  };
  actions.append(remove);p.append(actions);$("gallery").append(p);
  }
- $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View extraction";button.onclick=()=>showRun(run);item.append(button);$("runs").append(item)}
+ $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View full JSON";button.onclick=()=>{showRun(run);$("rawExtraction").open=true};item.append(button);$("runs").append(item)}
  const latestRun=runCache[0],lastSuccessful=runCache.find(x=>x.status==="completed");
  if(latestRun){const fmt=x=>x?new Date(x).toLocaleString():"—";const summary=["Last requested: "+fmt(latestRun.created_at),"Last started: "+fmt(latestRun.started_at||latestRun.claimed_at),"Last completed: "+fmt(lastSuccessful?.completed_at)].join(" · ");$("detailSummary").textContent=[$("detailSummary").textContent,summary].filter(Boolean).join(" · ")}
  const recent=runCache.find(x=>x.status==="completed");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
  status("detailStatus",runCache[0]?.status==="failed"?"Last attempt failed: "+runCache[0].error_message:(runCache[0]&&runCache[0].status!=="completed"?"Latest job: "+runCache[0].status+". Processing continues on the server.":""));
 }
-function showRun(run){if(currentBottle&&run.extraction_json)renderDossier(run.extraction_json,currentBottle);$("extraction").textContent=JSON.stringify(run.extraction_json,null,2)||"No data";$("cost").textContent=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated OpenAI cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens"}
+async function showRun(run){
+ if(currentBottle&&run.extraction_json)renderDossier(run.extraction_json,currentBottle);
+ const token=++displayedRunToken;
+ const summary=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated OpenAI cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens";
+ $("cost").textContent=summary;
+ $("extraction").textContent="Loading complete archived generator result…";
+ try{
+  let artifact=generatorArtifactCache.get(run.id);
+  if(!artifact){
+   const path="runs/aws/"+run.id+"/result.json";
+   const {data,error}=await supabase.storage.from("warehouse-media").download(path);
+   if(error)throw Error(error.message);
+   artifact=JSON.parse(await data.text());
+   generatorArtifactCache.set(run.id,artifact);
+  }
+  if(token!==displayedRunToken)return;
+  // Show the complete archived generator artifact AND the full database run record.
+  // The extraction alone omits generator_commit, model usage, prompt and run metadata.
+  $("extraction").textContent=JSON.stringify({generator_result:artifact,processing_run:run},null,2);
+  $("cost").textContent=summary+(artifact.generator_commit?" · Generator commit "+artifact.generator_commit.slice(0,12):"");
+ }catch(error){
+  if(token!==displayedRunToken)return;
+  $("extraction").textContent=JSON.stringify({processing_run:run},null,2);
+  $("cost").textContent=summary+" · Archived generator JSON unavailable: "+error.message+" (showing processing run only)";
+ }
+}
 $("saveRecord").onclick=async()=>{if(!currentBottle)return;$("saveRecord").disabled=true;try{
  const verified={};for(const raw of $("editDetails").value.split("\n")){if(!raw.trim())continue;const pos=raw.indexOf("=");if(pos<1)throw Error("Use field = value on every verified-fact line.");const key=raw.slice(0,pos).trim();if(!/^[a-z][a-z0-9_]*$/i.test(key))throw Error("Invalid field name: "+key);verified[key]=raw.slice(pos+1).trim();}
  const label=$("editSticker").value.trim(),title=$("editTitle").value.trim(),data={...currentBottle.data,notes:$("editNotes").value,verified_facts:verified,identity:{...(currentBottle.data.identity||{}),product_name:title||"Pending visual identification"}};
