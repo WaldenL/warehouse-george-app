@@ -1,0 +1,56 @@
+name: Smoke test Warehouse AI search
+
+on:
+  workflow_run:
+    workflows: ["Deploy Warehouse Lambda (Ohio)"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  search:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Authenticate to AWS Ohio
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::774281695493:role/WarehouseGeorgeGitHubDeployRole
+          aws-region: us-east-2
+
+      - name: Interpret sample searches (read-only)
+        run: |
+          set -euo pipefail
+          for q in "Show me my 100 proof bourbons that aren't locked" "Find my 2019 Chardonnays"; do
+            QUERY="$q" python3 - <<'PY'
+          import json,os
+          with open("search-request.json","w") as f:
+              json.dump({"action":"interpret_bottle_search","query":os.environ["QUERY"]},f)
+          PY
+            aws lambda invoke --function-name warehouse-george-worker \
+              --cli-binary-format raw-in-base64-out \
+              --payload fileb://search-request.json \
+              --region us-east-2 --cli-read-timeout 180 \
+              search-response.json > search-invoke.json
+            QUERY="$q" python3 - <<'PY'
+          import json,os
+          meta=json.load(open("search-invoke.json"))
+          result=json.load(open("search-response.json"))
+          if meta.get("FunctionError") or result.get("status")!="ok" or result.get("error"):
+              raise SystemExit("AI interpretation failed: "+str(result.get("status")))
+          filters=result["filters"]
+          print("Search:",os.environ["QUERY"])
+          print("Interpreted:",json.dumps(filters))
+          if "bourbons" in os.environ["QUERY"]:
+              assert filters["category"].lower().find("bourbon")>=0,filters
+              assert filters["proof_exact"]==100,filters
+              assert filters["locked"] is False,filters
+          else:
+              assert filters["vintage"]==2019,filters
+              assert filters["grape"].lower()=="chardonnay",filters
+          PY
+          done
