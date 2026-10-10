@@ -9,7 +9,11 @@ Rules:
 - Distinguish commonly reported tasting characteristics from hard production facts.
 - Do not invent precision. Use null/empty arrays when reliable information is unavailable.
 - Food pairings should be useful categories and examples, not recipes.
-- Flavor profile is normalized for matching bottles. Score dimensions from 0 (not characteristic) to 5 (dominant/very strong).
+- Flavor profile is normalized for matching wine and spirits. Score all dimensions from 0 (not characteristic) to 5 (dominant/very strong).
+- Sweetness means perceived sweetness, not fruit intensity; dry wines can have strong fruit scores.
+- Body measures perceived weight and mouthfeel independently of richness. Alcohol warmth measures sensory heat, not ABV. Minerality describes perceived mineral, stone, chalk, saline, or flinty character; do not imply scientifically confirmed mineral content.
+- For wine, distinguish useful fruit families (citrus, orchard, red, black, tropical, dried) in descriptors when supported. For whisky and other spirits, retain relevant descriptors without forcing wine-specific terms.
+- Avoid unsupported precision: a score represents a broad sourced tasting consensus, not an objective laboratory measurement.
 - Tasting notes are concise human-readable consensus notes, not copied prose.
 - Return source URLs used for durable provenance.
 
