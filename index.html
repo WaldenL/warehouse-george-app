@@ -258,14 +258,14 @@ async function showRun(run){
 }
 $("toggleLock").onclick=async()=>{
  if(!currentBottle)return;
- const locked=currentBottle.data?.attributes?.warehouse_lock?.locked===true;
- if(locked&&!confirm("Unlock this bottle? This removes the do-not-open designation."))return;
  $("toggleLock").disabled=true;
  try{
   // Read the current document before writing, preserving any new processing or research data.
   const {data:latest,error:readError}=await supabase.from("bottles").select("data").eq("id",currentBottle.id).single();
   if(readError)throw Error(readError.message);
   const existing=latest.data||{},attributes=existing.attributes||{};
+  const locked=attributes.warehouse_lock?.locked===true;
+  if(locked&&!confirm("Unlock this bottle? This removes the do-not-open designation."))return;
   const updated={...existing,attributes:{...attributes,warehouse_lock:{...(attributes.warehouse_lock||{}),locked:!locked,updated_at:new Date().toISOString()}}};
   const {error}=await supabase.from("bottles").update({data:updated}).eq("id",currentBottle.id);
   if(error)throw Error(error.message);
