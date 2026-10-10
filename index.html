@@ -8,7 +8,7 @@
 <div id="app" class="hidden"><div class="tabs"><button id="tabInventory" class="activeTab">Inventory</button><button id="tabAdd">Add bottle</button></div>
 <section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div><div id="bottleList" class="bottles"></div></section>
 <section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="additionalInstructions">Additional instructions for visual extraction (optional)</label><textarea id="additionalInstructions" placeholder="For example: focus on the handwritten barrel number. Treat this as context, not proof of what is visible."></textarea><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
-<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny"></span></div><section class="card"><div class="hero"><div class="catalog-views"><div class="catalog-view"><img id="detailThumb" alt="Front catalog depiction"><span class="tiny" id="frontCaption">Front</span></div><div class="catalog-view hidden" id="backCatalogView"><img id="detailBackThumb" alt="Back catalog depiction"><span class="tiny">Back · AI depiction</span></div></div><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div><div class="row"><button id="viewGenerated" class="hidden">View full front</button><button id="viewGeneratedBack" class="hidden">View full back</button><button id="toggleThumb" class="hidden">Show photo thumbnail</button></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
+<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny" style="flex:1"></span><button id="refreshDetail" type="button">Refresh</button></div><section class="card"><div class="hero"><div class="catalog-views"><div class="catalog-view"><img id="detailThumb" alt="Front catalog depiction"><span class="tiny" id="frontCaption">Front</span></div><div class="catalog-view hidden" id="backCatalogView"><img id="detailBackThumb" alt="Back catalog depiction"><span class="tiny">Back · AI depiction</span></div></div><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div><div class="row"><button id="viewGenerated" class="hidden">View full front</button><button id="viewGeneratedBack" class="hidden">View full back</button><button id="toggleThumb" class="hidden">Show photo thumbnail</button></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editTitle">Bottle name / description</label><input id="editTitle" placeholder="Optional manually verified name" style="width:100%"><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
 <section class="card"><h2>Bottle dossier</h2><p class="dossier-note">Photograph-derived observations are preliminary and not verified inventory facts. Unknown fields are omitted; original evidence remains available below.</p><div id="bottleDossier"></div></section>
 <section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div id="gallery" class="photo-grid"></div></section>
@@ -25,16 +25,36 @@ const status=(id,message,bad=false)=>{$(id).textContent=message;$(id).className=
 const fileName=x=>(x||"photo").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,90);
 const publicThumb=path=>path?supabase.storage.from("warehouse-thumbnails").getPublicUrl(path).data.publicUrl:"";
 let currentBottle=null,mediaCache=[],runCache=[];
+let inventoryLoadedUserId=null;
 const generatorArtifactCache=new Map();let displayedRunToken=0;
 function tab(section){$("inventory").classList.toggle("hidden",section!=="inventory");$("add").classList.toggle("hidden",section!=="add");$("detail").classList.toggle("hidden",section!=="detail");$("tabInventory").classList.toggle("activeTab",section==="inventory");$("tabAdd").classList.toggle("activeTab",section==="add");}
-$("tabInventory").onclick=()=>{tab("inventory");loadInventory()};$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>{tab("inventory");loadInventory()};$("refresh").onclick=loadInventory;
+$("tabInventory").onclick=()=>tab("inventory");$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>tab("inventory");
+$("refresh").onclick=()=>loadInventory();
+$("refreshDetail").onclick=()=>{if(currentBottle)openBottle(currentBottle.id)};
 $("loginForm").onsubmit=async e=>{e.preventDefault();$("signIn").disabled=true;try{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});status("loginStatus",error?error.message:"Signed in.",!!error);if(!error){$("password").value="";await refreshAuth()}}finally{$("signIn").disabled=false}};
 $("sendLink").onclick=async()=>{const email=$("email").value.trim();if(!email){status("loginStatus","Enter your email address first.",true);return}const r=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split("?")[0],shouldCreateUser:false}});status("loginStatus",r.error?r.error.message:"Check your email for the login link.",!!r.error)};
 $("passwordSettings").onclick=()=>{$("newPassword").value="";$("confirmPassword").value="";status("passwordStatus","");$("passwordDialog").showModal()};
 $("closePassword").onclick=()=>$("passwordDialog").close();
 $("passwordForm").onsubmit=async e=>{e.preventDefault();const password=$("newPassword").value;if(password!==$("confirmPassword").value){status("passwordStatus","Passwords do not match.",true);return}const {error}=await supabase.auth.updateUser({password});if(error){status("passwordStatus",error.message,true);return}status("passwordStatus","Password saved. You can use it the next time you sign in.");$("newPassword").value="";$("confirmPassword").value=""};
 $("logout").onclick=async()=>{await supabase.auth.signOut();await refreshAuth()};
-async function refreshAuth(){const {data,error}=await supabase.auth.getUser();if(error){status("loginStatus","Session check: "+error.message,true);}$("login").classList.toggle("hidden",!!data.user);$("app").classList.toggle("hidden",!data.user);$("logout").classList.toggle("hidden",!data.user);$("passwordSettings").classList.toggle("hidden",!data.user);if(data.user)await loadInventory();}
+async function refreshAuth(){
+ const {data,error}=await supabase.auth.getUser();
+ if(error)status("loginStatus","Session check: "+error.message,true);
+ $("login").classList.toggle("hidden",!!data.user);
+ $("app").classList.toggle("hidden",!data.user);
+ $("logout").classList.toggle("hidden",!data.user);
+ $("passwordSettings").classList.toggle("hidden",!data.user);
+ // Load once on sign-in or account change, not on token renewal or tab navigation.
+ const userId=data.user?.id||null;
+ if(inventoryLoadedUserId!==userId){
+  inventoryLoadedUserId=userId;
+  currentBottle=null;mediaCache=[];runCache=[];
+  generatorArtifactCache.clear();signedImageCache.clear();
+  $("bottleList").replaceChildren();
+  tab("inventory");
+  if(userId)await loadInventory();
+ }
+}
 // Supabase fires auth callbacks while holding its auth lock. Do not call getUser
 // synchronously inside the callback: that can deadlock the login transition.
 supabase.auth.onAuthStateChange((event,session)=>{setTimeout(()=>{refreshAuth().catch(e=>status("loginStatus","Authentication refresh failed: "+e.message,true))},0)});
@@ -42,9 +62,6 @@ const authParams=new URLSearchParams(location.search);
 const authHash=new URLSearchParams(location.hash.replace(/^#/,""));
 const authError=authParams.get("error_description")||authHash.get("error_description")||authParams.get("error")||authHash.get("error");
 if(authError)status("loginStatus","Sign-in link error: "+authError,true);
-let inventoryTimer=null;
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!("inventory").classList.contains("hidden"))loadInventory();});
-inventoryTimer=setInterval(()=>{if(!document.hidden&&$("app")&&!$("app").classList.contains("hidden")){if(!$("inventory").classList.contains("hidden"))loadInventory();else if(!$("detail").classList.contains("hidden")&&currentBottle&&runCache.length&&["queued","retry_pending","processing"].includes(runCache[0].status))openBottle(currentBottle.id);}},20000);
 $("files").onchange=()=>{const files=[...$("files").files];$("primary").replaceChildren(...files.map((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=(i+1)+". "+f.name;return o;}))};
 async function storeOriginals(bottleId,files,mode="append"){
  const records=[];
