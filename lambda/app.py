@@ -1,4 +1,4 @@
-import os, json, io, uuid, re, traceback, hashlib
+import os, json, io, uuid, re, traceback, hashlib, base64
 from datetime import datetime, timezone
 import requests
 from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
@@ -6,10 +6,12 @@ from rembg import remove, new_session
 
 TIMEOUT=40
 GENERATOR_COMMIT=os.environ.get("WAREHOUSE_GENERATOR_COMMIT","unknown")
+IMAGE_MODEL=os.environ.get("WAREHOUSE_IMAGE_MODEL","gpt-image-2.5-sunburst")
 from pathlib import Path
 ASSET_DIR=Path(__file__).resolve().parent
 EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction.md").read_text(encoding="utf-8")
 EXTRACTION_SCHEMA=json.loads((ASSET_DIR / "schemas" / "warehouse_visual.json").read_text(encoding="utf-8"))
+THUMBNAIL_PROMPT=(ASSET_DIR / "prompts" / "warehouse_thumbnail_generation.md").read_text(encoding="utf-8")
 def now(): return datetime.now(timezone.utc).isoformat()
 def secret():
     value=os.environ.get("WAREHOUSE_WORKER_CONFIG","")
@@ -79,6 +81,56 @@ def thumbnail(cfg,run,im):
     path=f"bottles/{run['bottle_id']}/{uuid.uuid4()}.png"
     storage(cfg,"POST","warehouse-thumbnails",path,out.getvalue(),"image/png")
     return path
+def generate_catalog_thumbnail(cfg,run,photos,brief):
+    """Second, generative pass. All originals and working photographs remain untouched."""
+    selected=list(dict.fromkeys(brief.get("canonical_photo_numbers") or [1]))[:3]
+    if not selected or any(not isinstance(n,int) or n<1 or n>len(photos) for n in selected):
+        raise ValueError("No valid reference photographs for thumbnail generation")
+    files=[]
+    for n in selected:
+        image=photos[n-1].copy()
+        image.thumbnail((1536,1536),Image.Resampling.LANCZOS)
+        buf=io.BytesIO()
+        image.save(buf,"PNG",optimize=True)
+        files.append(("image[]",(f"reference_photo_{n}.png",buf.getvalue(),"image/png")))
+    prompt=THUMBNAIL_PROMPT+json.dumps(brief,ensure_ascii=False,indent=2)
+    response=requests.post(
+        "https://api.openai.com/v1/images/edits",
+        headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"]},
+        data={"model":IMAGE_MODEL,"prompt":prompt,"size":"1024x1536",
+              "quality":"high","output_format":"png","background":"opaque","n":"1"},
+        files=files,timeout=(20,360))
+    if not response.ok:
+        raise RuntimeError(f"Image generation HTTP {response.status_code}: {response.text[:400]}")
+    payload=response.json()
+    images=payload.get("data") or []
+    if not images or not images[0].get("b64_json"):
+        raise ValueError("Image API returned no image data")
+    raw=base64.b64decode(images[0]["b64_json"],validate=True)
+    with Image.open(io.BytesIO(raw)) as decoded:
+        generated=decoded.convert("RGB")
+    if generated.width<500 or generated.height<500:
+        raise ValueError("Image API returned an unexpectedly small image")
+    full=io.BytesIO()
+    generated.save(full,"PNG",optimize=True)
+    bid,rid=run["bottle_id"],run["id"]
+    full_path=f"bottles/{bid}/generated/{rid}/catalog.png"
+    preview_path=f"bottles/{bid}/generated/{rid}/preview.png"
+    # Full resolution is private; the catalog-sized preview is public like existing thumbnails.
+    storage(cfg,"POST","warehouse-media",full_path,full.getvalue(),"image/png")
+    preview=Image.new("RGB",(192,288),(244,244,242))
+    scaled=generated.copy()
+    scaled.thumbnail((184,280),Image.Resampling.LANCZOS)
+    preview.paste(scaled,((192-scaled.width)//2,(288-scaled.height)//2))
+    small=io.BytesIO()
+    preview.save(small,"PNG")
+    storage(cfg,"POST","warehouse-thumbnails",preview_path,small.getvalue(),"image/png")
+    return {"status":"completed","kind":"ai_generated_catalog_depiction",
+            "model":IMAGE_MODEL,"prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16],
+            "source_photo_numbers":selected,"full_image_path":full_path,"preview_path":preview_path,
+            "size":[generated.width,generated.height],"usage":payload.get("usage") or {},
+            "generated_at":now()}
+
 def extract(cfg,run,paths,additional_instructions=''):
     import base64
     content=[{"type":"input_text","text":EXTRACTION_PROMPT}]
@@ -136,17 +188,37 @@ def process(event):
         extra=(bottle[0].get("data") or {}).get("processing",{}).get("additional_instructions","") if bottle else ""
         parsed,usage,model=extract(cfg,run,paths,extra)
         cost={"estimated_total_usd":round(((usage.get("input_tokens") or 0)*0.4+(usage.get("output_tokens") or 0)*1.6)/1000000,8)}
+        # Generation is deliberately isolated: a failed or unavailable image model
+        # must not invalidate a successful evidence-based bottle extraction.
+        try:
+            generation=generate_catalog_thumbnail(cfg,run,photos,parsed["thumbnail_brief"])
+        except Exception as exc:
+            print(json.dumps({"stage":"catalog_generation","run_id":rid,"warning":str(exc)[:400]}))
+            generation={"status":"failed","kind":"ai_generated_catalog_depiction",
+                        "model":IMAGE_MODEL,"error":str(exc)[:500],"attempted_at":now(),
+                        "source_photo_numbers":parsed["thumbnail_brief"].get("canonical_photo_numbers") or [],
+                        "prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16]}
+        generated_preview=generation.get("preview_path")
         result_path=f"runs/aws/{rid}/result.json"
-        artifact={"generator_commit":GENERATOR_COMMIT,"schema_version":"warehouse_visual_observations_v1","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
+        artifact={"generator_commit":GENERATOR_COMMIT,"schema_version":"warehouse_visual_observations_v1",
+                  "extraction":parsed,"model":model,"usage":usage,"cost":cost,
+                  "thumbnail_generation":generation,"thumbnail_generation_prompt":THUMBNAIL_PROMPT,
+                  "background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
-        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"generated_thumbnail_path":generated_preview,"generation_json":generation,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
             facts={o["field"]:o["value"] for o in parsed["observations"]}
-            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
+            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,
+                      "generated_thumbnail_path":generated_preview,
+                      "thumbnail_generation_status":generation["status"],
+                      "extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
             data["processing"]=p
             api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
-        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
+        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,
+                "photos":len(paths),"background_fallback":len(fallback),
+                "thumbnail_generation_status":generation["status"],
+                "generated_thumbnail_path":generated_preview}
     except Exception as err:
         print(traceback.format_exc())
         state="failed"
