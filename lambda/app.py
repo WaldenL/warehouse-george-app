@@ -5,6 +5,7 @@ from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
 from rembg import remove, new_session
 
 TIMEOUT=40
+GENERATOR_COMMIT=os.environ.get("WAREHOUSE_GENERATOR_COMMIT","unknown")
 from pathlib import Path
 ASSET_DIR=Path(__file__).resolve().parent
 EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction.md").read_text(encoding="utf-8")
@@ -109,13 +110,13 @@ def process(event):
     rid=event.get("processing_run_id")
     uuid.UUID(rid)
     found=api(cfg,"GET","bottle_processing_runs",params={"id":"eq."+rid,"select":"*"})
-    if len(found)!=1:return {"status":"not_found","id":rid}
+    if len(found)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"not_found","id":rid}
     run=found[0]
-    if run["status"] not in ("queued","retry_pending"):return {"status":"not_claimable","id":rid,"current_status":run["status"]}
+    if run["status"] not in ("queued","retry_pending"):return {"generator_commit":GENERATOR_COMMIT,"status":"not_claimable","id":rid,"current_status":run["status"]}
     claimed=api(cfg,"PATCH","bottle_processing_runs",
         {"status":"processing","claimed_at":now(),"attempt_count":(run.get("attempt_count") or 0)+1},
         params={"id":"eq."+rid,"status":"eq."+run["status"],"select":"id"})
-    if len(claimed)!=1:return {"status":"claimed_elsewhere","id":rid}
+    if len(claimed)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"claimed_elsewhere","id":rid}
     try:
         ids=run.get("source_media_ids") or []
         if not ids:raise RuntimeError("No source photographs")
@@ -136,7 +137,7 @@ def process(event):
         parsed,usage,model=extract(cfg,run,paths,extra)
         cost={"estimated_total_usd":round(((usage.get("input_tokens") or 0)*0.4+(usage.get("output_tokens") or 0)*1.6)/1000000,8)}
         result_path=f"runs/aws/{rid}/result.json"
-        artifact={"schema_version":"warehouse_visual_observations_v1","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
+        artifact={"generator_commit":GENERATOR_COMMIT,"schema_version":"warehouse_visual_observations_v1","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
         api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
@@ -145,11 +146,11 @@ def process(event):
             p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
             data["processing"]=p
             api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
-        return {"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
+        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
     except Exception as err:
         print(traceback.format_exc())
         state="failed"
         api(cfg,"PATCH","bottle_processing_runs",{"status":state,"error_message":str(err)[:1000]},params={"id":"eq."+rid})
-        return {"status":state,"id":rid,"error":str(err)[:500]}
+        return {"generator_commit":GENERATOR_COMMIT,"status":state,"id":rid,"error":str(err)[:500]}
 def handler(event,context):
     return process(event or {})
