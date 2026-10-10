@@ -57,7 +57,7 @@ jobs:
         id: build
         run: |
           URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
-          docker build --platform linux/amd64 -t "$URI:${GITHUB_SHA}" -f lambda/Dockerfile lambda
+          docker build --platform linux/amd64 --build-arg "GIT_COMMIT=${GITHUB_SHA}" -t "$URI:${GITHUB_SHA}" -f lambda/Dockerfile lambda
           docker push "$URI:${GITHUB_SHA}"
           echo "image_uri=$URI:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
