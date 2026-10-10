@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify concise bottle titles
+        run: node --test tests/bottle-naming.test.mjs
       - name: Stage website without Lambda or internal workflows
         run: |
           mkdir -p site
