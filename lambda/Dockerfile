@@ -9,4 +9,6 @@ ENV NUMBA_DISABLE_JIT=1 \
     XDG_CACHE_HOME=/tmp/.cache \
     NUMBA_CACHE_DIR=/tmp/numba-cache
 COPY app.py ${LAMBDA_TASK_ROOT}/app.py
+COPY prompts/ ${LAMBDA_TASK_ROOT}/prompts/
+COPY schemas/ ${LAMBDA_TASK_ROOT}/schemas/
 CMD ["app.handler"]
