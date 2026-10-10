@@ -73,12 +73,23 @@ def extract(cfg,run,paths):
     for i,path in enumerate(paths):
         b=storage(cfg,"GET","warehouse-media",path)
         content.extend([{"type":"input_text","text":f"Working photo {i+1}"},{"type":"input_image","image_url":"data:image/png;base64,"+base64.b64encode(b).decode(),"detail":"high"}])
-    response=requests.post("https://api.openai.com/v1/responses",headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},json={"model":"gpt-4.1-mini","store":False,"max_output_tokens":3500,"text":{"format":{"type":"json_schema","name":"warehouse_visual_v1_3","strict":True,"schema":EXTRACTION_SCHEMA}},"input":[{"role":"user","content":content}]},timeout=180)
+    response=requests.post("https://api.openai.com/v1/responses",headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},json={"model":"gpt-4.1-mini","store":False,"max_output_tokens":3500,"text":{"format":{"type":"json_schema","name":"warehouse_visual_observations_v1","strict":True,"schema":EXTRACTION_SCHEMA}},"input":[{"role":"user","content":content}]},timeout=180)
     response.raise_for_status()
     result=response.json()
     output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
     parsed=json.loads(output)
-    if parsed.get("schema_version")!="warehouse_visual_v1_3":raise ValueError("Extraction schema version mismatch")
+    if parsed.get("schema_version")!="warehouse_visual_observations_v1":raise ValueError("Extraction schema version mismatch")
+    # An observation and its evidence are one atomic record, never separate lists.
+    observations=parsed.get("observations",[])
+    seen=set()
+    for obs in observations:
+        field=obs["field"]
+        if field in seen: raise ValueError("Duplicate observation field: "+field)
+        seen.add(field)
+        if not obs["value"].strip() or not obs["evidence_text"].strip() or not obs["photos"]:
+            raise ValueError("Observation missing value or photo evidence: "+field)
+        if any(not isinstance(n,int) or n<1 or n>len(paths) for n in obs["photos"]):
+            raise ValueError("Invalid photograph reference: "+field)
     return parsed,result.get("usage",{}),result.get("model","gpt-4.1-mini")
 def process(event):
     cfg=secret()
@@ -111,12 +122,12 @@ def process(event):
         parsed,usage,model=extract(cfg,run,paths)
         cost={"estimated_total_usd":round(((usage.get("input_tokens") or 0)*0.4+(usage.get("output_tokens") or 0)*1.6)/1000000,8)}
         result_path=f"runs/aws/{rid}/result.json"
-        artifact={"schema_version":"warehouse_visual_v1_3","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
+        artifact={"schema_version":"warehouse_visual_observations_v1","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
-        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_v1_3","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_observations_v1","prompt_version":"sha256:"+hashlib.sha256(EXTRACTION_PROMPT.encode("utf-8")).hexdigest()[:16],"model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
-            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_identity":parsed.get("identity"),"extracted_specification":parsed.get("specification")})
+            p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb})
             data["processing"]=p
             api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
         return {"status":"completed","id":rid,"photos":len(paths),"background_fallback":len(fallback)}
