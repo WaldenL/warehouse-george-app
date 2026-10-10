@@ -334,4 +334,8 @@ def process(event):
         api(cfg,"PATCH","bottle_processing_runs",{"status":state,"error_message":str(err)[:1000]},params={"id":"eq."+rid})
         return {"generator_commit":GENERATOR_COMMIT,"status":state,"id":rid,"error":str(err)[:500]}
 def handler(event,context):
-    return process(event or {})
+    event=event or {}
+    if event.get("action")=="interpret_bottle_search":
+        from search import interpret_search
+        return interpret_search(event,secret())
+    return process(event)
