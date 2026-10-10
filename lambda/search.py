@@ -44,7 +44,7 @@ SCHEMA={
 SYSTEM="""You translate natural-language requests into read-only search filters for a private bottle inventory.
 Return the specified JSON object only. Do not answer questions, claim inventory matches, or invent facts.
 Interpret the user's intent, not a rigid search syntax.
-Use only filters that the request actually supports. For any unused field return null.
+Use only filters that the request actually supports. For any unused scalar field return null; unused flavor_constraints must be an empty array [].
 - 100 proof = exactly 100 US proof = 50% ABV. 'At least', 'under', and ranges use min/max.
 - 'Unopened' means status sealed; 'open' means status open. Do not infer statuses.
 - 'Unlocked' means locked false (never locked counts as unlocked).
@@ -110,7 +110,7 @@ def interpret_search(event,cfg):
                 " · "+str(parsed.get("interpretation","")) if any(
                     filters.get(k) is not None for k in filters if k!="category") else "")
         # Fail closed if a restrictive request was somehow parsed as "all".
-        if not parsed.get("error") and not any(v is not None and v!="" for v in filters.values()):
+        if not parsed.get("error") and not any(v is not None and v!="" and v!=[] for v in filters.values()):
             if not re.search(r"\b(bottles?|collection|inventory)\b",query,re.I):
                 return {"status":"invalid_interpretation",
                         "error":"Search couldn't identify a filter. Please rephrase."}
