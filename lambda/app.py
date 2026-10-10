@@ -258,6 +258,48 @@ def extract(cfg,run,paths,additional_instructions=''):
     if any(not isinstance(n,int) or n<1 or n>len(paths) for n in brief["canonical_photo_numbers"]):
         raise ValueError("Thumbnail brief references an invalid photograph")
     return parsed,result.get("usage",{}),result.get("model","gpt-4.1-mini")
+
+def visual_inventory_name(facts):
+    """Provisional AI-derived title; source remains the photograph extraction."""
+    import re
+    def val(k):
+        return str(facts.get(k) or "").strip()
+    def title(v):
+        return v.title() if v and v.upper()==v else v
+    brand=title(val("brand"))
+    expr=title(val("expression"))
+    category=val("category")
+    if re.fullmatch(r"Family Estate Bottled Single Barrel Bourbon",expr,re.I):
+        expr="Family Estate"
+    if re.fullmatch(r"Smaller Casks\\s*[•·-]\\s*Bolder Flavou?rs",expr,re.I):
+        expr=""
+    if not expr and brand.lower()=="willett" and "bourbon" in category.lower() and val("barrel_number"):
+        expr="Family Estate"
+    if expr.lower() in brand.lower():
+        expr=""
+    name=" ".join(v for v in (brand,expr) if v)
+    if "scotch" in category.lower() or "single malt" in category.lower():
+        distillery=title(val("distillery_label_text"))
+        if distillery and len(distillery)<50 and distillery.lower() not in name.lower():
+            name=" ".join(v for v in (brand,distillery,expr) if v)
+    vintage=val("vintage_year")
+    wine=bool(re.fullmatch(r"\\d{4}",vintage) and (re.search(r"wine|sauternes|champagne|port|sherry|madeira",category,re.I) or val("grape_varieties") or val("appellation")))
+    if wine and vintage not in name:
+        name=(name+" "+vintage).strip()
+    age=val("stated_age")
+    match=re.search(r"\\b(\\d{1,3})\\b",age)
+    words={"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,"eight":8,"nine":9,"ten":10,"eleven":11,"twelve":12,"thirteen":13,"fourteen":14,"fifteen":15,"sixteen":16,"seventeen":17,"eighteen":18,"nineteen":19,"twenty":20}
+    word=re.search(r"\\b("+"|".join(words)+r")\\b",age,re.I)
+    years=int(match.group(1)) if match else words[word.group(1).lower()] if word else None
+    if years and 0<years<150 and not wine and not re.search(r"\\b"+str(years)+r"\\s*years?\\b",name,re.I):
+        name+=(", " if re.search(r"traveler|traveller|fifth",expr,re.I) else " ")+str(years)+" Year Old"
+    selection=val("private_selection_name") or val("private_selection_label_text")
+    if selection and not re.fullmatch(r"\\s*\\d+\\s*/\\s*\\d+\\s*",selection):
+        name+=" — "+title(selection)
+    elif val("barrel_number") and re.search(r"bourbon|whisk|rye",category,re.I) and val("barrel_number") not in name:
+        name+=" — Barrel #"+val("barrel_number").lstrip("# ")
+    return name.strip() or "Unidentified bottle"
+
 def process(event):
     cfg=secret()
     rid=event.get("processing_run_id")
@@ -323,6 +365,18 @@ def process(event):
                       "thumbnail_generation_status":generation["status"],
                       "extracted_summary":{k:facts[k] for k in ("brand","expression","category","region") if k in facts}})
             data["processing"]=p
+            identity=data.get("identity") or {}
+            existing=str(identity.get("product_name") or "").strip()
+            # Preserve a personally entered title; refreshed photo evidence may update AI titles.
+            if identity.get("name_source")=="ai_visual" or not existing or existing=="Pending visual identification":
+                identity["product_name"]=visual_inventory_name(facts)
+                identity["name_source"]="ai_visual"
+                identity["identification_status"]="ai_accepted"
+                identity["visual_run_id"]=rid
+                for field in ("brand","expression","category","subcategory","region","country","vintage_year","stated_age"):
+                    if facts.get(field):
+                        identity[field]=facts[field]
+                data["identity"]=identity
             api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
         return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,
                 "photos":len(paths),"background_fallback":len(fallback),
