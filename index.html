@@ -36,7 +36,7 @@ const publicThumb=path=>path?supabase.storage.from("warehouse-thumbnails").getPu
 let currentBottle=null,mediaCache=[],runCache=[];
 let inventoryLoadedUserId=null;
 const inventoryPageSize=50;
-let inventoryPage=0,inventoryFilters={},inventoryInterpretation="",inventoryRequestSeq=0,searchBusy=false;
+let inventoryPage=0,inventoryFilters={},inventoryInterpretation="",inventoryRequestSeq=0,searchBusy=false,searchToken=0;
 const generatorArtifactCache=new Map();let displayedRunToken=0;
 function tab(section){$("inventory").classList.toggle("hidden",section!=="inventory");$("add").classList.toggle("hidden",section!=="add");$("detail").classList.toggle("hidden",section!=="detail");$("tabInventory").classList.toggle("activeTab",section==="inventory");$("tabAdd").classList.toggle("activeTab",section==="add");}
 $("tabInventory").onclick=()=>tab("inventory");$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>tab("inventory");
@@ -47,7 +47,8 @@ $("searchForm").onsubmit=async event=>{
  if(searchBusy)return;
  const query=$("searchPrompt").value.trim();
  if(!query){status("searchStatus","Enter a request, or click Clear to show all bottles.",true);return}
- searchBusy=true;$("searchButton").disabled=true;
+ const token=++searchToken;
+ searchBusy=true;$("searchButton").disabled=true;$("clearSearch").disabled=true;
  status("searchStatus","Interpreting your search…");
  try{
   const {data,error}=await supabase.functions.invoke("warehouse-search-interpret",{body:{query}});
@@ -56,17 +57,18 @@ $("searchForm").onsubmit=async event=>{
    try{detail=await error.context?.json?.()}catch{}
    throw Error(detail?.error||error.message||"Search unavailable");
   }
+  if(token!==searchToken)return;
   if(data?.error)throw Error(data.error);
   if(!data?.filters||typeof data.filters!=="object")throw Error("Search returned no usable filters.");
   inventoryFilters=data.filters;
   inventoryInterpretation=String(data.interpretation||"Matching bottles");
   inventoryPage=0;
-  await loadInventory(0);
-  status("searchStatus","");
- }catch(e){status("searchStatus",e.message||"Search failed.",true)}
- finally{searchBusy=false;$("searchButton").disabled=false;$("clearSearch").disabled=false}
+  if(await loadInventory(0))status("searchStatus","");
+ }catch(e){if(token===searchToken)status("searchStatus",e.message||"Search failed.",true)}
+ finally{if(token===searchToken){searchBusy=false;$("searchButton").disabled=false;$("clearSearch").disabled=!$("searchPrompt").value.trim()&&!Object.keys(inventoryFilters).length}}
 };
 $("clearSearch").onclick=()=>{
+ searchToken++;searchBusy=false;$("searchButton").disabled=false;
  $("searchPrompt").value="";
  inventoryFilters={};inventoryInterpretation="";inventoryPage=0;
  status("searchStatus","");
@@ -93,7 +95,7 @@ async function refreshAuth(){
  const userId=data.user?.id||null;
  if(inventoryLoadedUserId!==userId){
   inventoryLoadedUserId=userId;
-  inventoryPage=0;inventoryFilters={};inventoryInterpretation="";inventoryRequestSeq++;
+  inventoryPage=0;inventoryFilters={};inventoryInterpretation="";inventoryRequestSeq++;searchToken++;searchBusy=false;$("searchButton").disabled=false;
   $("searchPrompt").value="";$("searchInterpretation").textContent="";status("searchStatus","");$("clearSearch").disabled=true;
   currentBottle=null;mediaCache=[];runCache=[];
   generatorArtifactCache.clear();signedImageCache.clear();
@@ -149,14 +151,21 @@ async function loadInventory(page=inventoryPage){
  const seq=++inventoryRequestSeq;
  const nextPage=Math.max(0,Math.floor(page));
  $("refresh").disabled=true;
- const r=await supabase.rpc("warehouse_filter_bottles",{
-  p_filters:inventoryFilters,p_limit:inventoryPageSize,p_offset:nextPage*inventoryPageSize
- });
- if(seq!==inventoryRequestSeq)return;
+ let r;
+ try{
+  r=await supabase.rpc("warehouse_filter_bottles",{
+   p_filters:inventoryFilters,p_limit:inventoryPageSize,p_offset:nextPage*inventoryPageSize
+  });
+ }catch(e){
+  if(seq===inventoryRequestSeq){$("refresh").disabled=false;status("searchStatus","Could not load bottles: "+e.message,true)}
+  return false;
+ }
+ if(seq!==inventoryRequestSeq)return false;
  $("refresh").disabled=false;
- if(r.error){status("searchStatus","Could not load bottles: "+r.error.message,true);return}
- inventoryPage=nextPage;
+ if(r.error){status("searchStatus","Could not load bottles: "+r.error.message,true);return false}
  const list=r.data||[],total=Number(list[0]?.total_count||0);
+ if(!list.length&&nextPage>0)return loadInventory(0);
+ inventoryPage=nextPage;
  const first=total?inventoryPage*inventoryPageSize+1:0;
  const last=total?Math.min(total,(inventoryPage+1)*inventoryPageSize):0;
  $("searchInterpretation").textContent=(inventoryInterpretation?inventoryInterpretation+" · ":"")+
@@ -177,6 +186,7 @@ async function loadInventory(page=inventoryPage){
    '<div class="bottle-copy"><div class="name">'+esc(title)+'</div>'+(tags?'<div class="bottle-tags">'+tags+'</div>':"")+'</div></button>';
  }).join("")||(inventoryInterpretation?'<p class="muted">No bottles match this search. Try different wording or clear the search.</p>':'<p class="muted">No bottles yet. Add your first bottle to begin.</p>');
  $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
+ return true;
 }
 const signedImageCache=new Map();
 async function signedImage(path){const item=signedImageCache.get(path);if(item&&item.expiresAt>Date.now())return item.url;const r=await supabase.storage.from("warehouse-media").createSignedUrl(path,3600);if(r.error)throw Error(r.error.message);signedImageCache.set(path,{url:r.data.signedUrl,expiresAt:Date.now()+55*60*1000});return r.data.signedUrl}
