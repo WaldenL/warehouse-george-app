@@ -8,7 +8,7 @@
 <div id="app" class="hidden"><div class="tabs"><button id="tabInventory" class="activeTab">Inventory</button><button id="tabAdd">Add bottle</button></div>
 <section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div><div id="bottleList" class="bottles"></div></section>
 <section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="additionalInstructions">Additional instructions for visual extraction (optional)</label><textarea id="additionalInstructions" placeholder="For example: focus on the handwritten barrel number. Treat this as context, not proof of what is visible."></textarea><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
-<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny"></span></div><section class="card"><div class="hero"><img id="detailThumb" alt="Bottle thumbnail"><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
+<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny"></span></div><section class="card"><div class="hero"><img id="detailThumb" alt="Bottle thumbnail"><div><h2 id="detailName"></h2><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div><div class="row"><button id="viewGenerated" class="hidden">View full AI image</button><button id="toggleThumb" class="hidden">Show photo thumbnail</button></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editTitle">Bottle name / description</label><input id="editTitle" placeholder="Optional manually verified name" style="width:100%"><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
 <section class="card"><h2>Bottle dossier</h2><p class="dossier-note">Photograph-derived observations are preliminary and not verified inventory facts. Unknown fields are omitted; original evidence remains available below.</p><div id="bottleDossier"></div></section>
 <section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div id="gallery" class="photo-grid"></div></section>
@@ -84,7 +84,7 @@ $("create").onclick=async()=>{
 async function loadInventory(){
  const r=await supabase.from("bottles").select("id,label_number,data,created_at").order("created_at",{ascending:false});
  if(r.error){$("bottleList").textContent=r.error.message;return}
- const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_summary||b.data?.identity||{};const title=(b.data?.identity?.product_name&&b.data.identity.product_name!=="Pending visual identification"?b.data.identity.product_name:"")||[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const src=publicThumb(b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span></span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
+ const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_summary||b.data?.identity||{};const title=(b.data?.identity?.product_name&&b.data.identity.product_name!=="Pending visual identification"?b.data.identity.product_name:"")||[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const src=publicThumb(b.data?.processing?.generated_thumbnail_path||b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span></span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
  $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
 }
 const signedImageCache=new Map();
@@ -127,7 +127,24 @@ async function openBottle(id){
  renderDossier(extract,b.data);
  const facts=obsMap(extract);const ident={brand:facts.brand?.[0]?.value,expression:facts.expression?.[0]?.value,category:facts.category?.[0]?.value,region:facts.region?.[0]?.value};$("detailName").textContent=(d.identity?.product_name&&d.identity.product_name!=="Pending visual identification"?d.identity.product_name:"")||[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
  $("detailSummary").textContent=[ident.category,ident.region,b.data.label_number?"Warehouse #"+b.data.label_number:""].filter(Boolean).join(" · ");
- const publicUrl=publicThumb(b.data.data?.processing?.thumbnail_path);$("detailThumb").src=publicUrl||"";$("detailThumb").style.visibility=publicUrl?"visible":"hidden";
+ const p=d.processing||{};
+ const generatedUrl=publicThumb(p.generated_thumbnail_path),photoUrl=publicThumb(p.thumbnail_path);
+ const generationRun=runCache.find(x=>x.id===p.latest_run_id);
+ const generation=generationRun?.generation_json;
+ const hasGenerated=!!generatedUrl;
+ let showingGenerated=hasGenerated;
+ const setHeroThumbnail=()=>{
+  const url=showingGenerated?generatedUrl:photoUrl;
+  $("detailThumb").src=url||"";$("detailThumb").style.visibility=url?"visible":"hidden";
+  $("thumbnailInfo").textContent=showingGenerated?"AI-generated catalog depiction · not photographic evidence":(generation?.status==="failed"?"Photo-derived thumbnail · AI generation failed: "+(generation.error||"unknown error"):"Photo-derived thumbnail");
+  $("toggleThumb").textContent=showingGenerated?"Show photo thumbnail":"Show AI thumbnail";
+ };
+ $("toggleThumb").classList.toggle("hidden",!generatedUrl||!photoUrl);
+ $("toggleThumb").onclick=()=>{showingGenerated=!showingGenerated;setHeroThumbnail()};
+ const fullGeneratedPath=generation?.status==="completed"?generation.full_image_path:null;
+ $("viewGenerated").classList.toggle("hidden",!fullGeneratedPath);
+ $("viewGenerated").onclick=()=>{if(fullGeneratedPath)showImage(fullGeneratedPath).catch(e=>alert("Could not open generated image: "+e.message))};
+ setHeroThumbnail();
  $("gallery").replaceChildren();for(const [i,media] of mediaCache.entries()){
  const p=document.createElement("div");p.className="photo";p.innerHTML='<strong>Photo '+(i+1)+' · '+(media.working_path?'Working image':'Original only')+'</strong>';
  const img=document.createElement("img");img.alt=media.working_path?"Processed working photograph":"Archived original photograph";const path=media.working_path||media.object_path;try{img.src=await signedImage(path)}catch{}
@@ -151,7 +168,7 @@ async function openBottle(id){
  };
  actions.append(remove);p.append(actions);$("gallery").append(p);
  }
- $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View full JSON";button.onclick=()=>{showRun(run);$("rawExtraction").open=true};item.append(button);$("runs").append(item)}
+ $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+(run.generation_json?' · AI thumbnail: '+esc(run.generation_json.status):'')+'</div>';const button=document.createElement("button");button.textContent="View full JSON";button.onclick=()=>{showRun(run);$("rawExtraction").open=true};item.append(button);$("runs").append(item)}
  const latestRun=runCache[0],lastSuccessful=runCache.find(x=>x.status==="completed");
  if(latestRun){const fmt=x=>x?new Date(x).toLocaleString():"—";const summary=["Last requested: "+fmt(latestRun.created_at),"Last started: "+fmt(latestRun.started_at||latestRun.claimed_at),"Last completed: "+fmt(lastSuccessful?.completed_at)].join(" · ");$("detailSummary").textContent=[$("detailSummary").textContent,summary].filter(Boolean).join(" · ")}
  const recent=runCache.find(x=>x.status==="completed");if(recent)showRun(recent);else{$("extraction").textContent="No completed extraction yet.";$("cost").textContent="";}
@@ -160,7 +177,7 @@ async function openBottle(id){
 async function showRun(run){
  if(currentBottle&&run.extraction_json)renderDossier(run.extraction_json,currentBottle);
  const token=++displayedRunToken;
- const summary=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated OpenAI cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens";
+ const summary=(run.schema_version||"")+(run.cost_json?.estimated_total_usd!=null?" · Estimated extraction cost $"+Number(run.cost_json.estimated_total_usd).toFixed(6):"")+" · "+(run.usage_json?.total_tokens||"")+" tokens";
  $("cost").textContent=summary;
  $("extraction").textContent="Loading complete archived generator result…";
  try{
@@ -176,7 +193,7 @@ async function showRun(run){
   // Show the complete archived generator artifact AND the full database run record.
   // The extraction alone omits generator_commit, model usage, prompt and run metadata.
   $("extraction").textContent=JSON.stringify({generator_result:artifact,processing_run:run},null,2);
-  $("cost").textContent=summary+(artifact.generator_commit?" · Generator commit "+artifact.generator_commit.slice(0,12):"");
+  $("cost").textContent=summary+(artifact.generator_commit?" · Generator commit "+artifact.generator_commit.slice(0,12):"")+(artifact.thumbnail_generation?" · AI thumbnail: "+artifact.thumbnail_generation.status+" (image API billed separately)":"");
  }catch(error){
   if(token!==displayedRunToken)return;
   $("extraction").textContent=JSON.stringify({processing_run:run},null,2);
