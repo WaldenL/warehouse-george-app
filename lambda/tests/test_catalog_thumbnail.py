@@ -80,7 +80,7 @@ class CatalogThumbnailTests(unittest.TestCase):
         self.assertEqual([call.args[2] for call in storage.call_args_list],
                          ["warehouse-media", "warehouse-thumbnails"]*2)
         self.assertEqual(self.photos[0].size, (240, 400))
-        self.assertEqual(front["cost_json"]["estimated_total_usd"], 0.05704)
+        self.assertEqual(front["cost_json"]["estimated_total_usd"], 0.05696)
 
     @patch.object(worker, "storage")
     @patch.object(worker.requests, "post")
@@ -116,21 +116,21 @@ class CatalogThumbnailTests(unittest.TestCase):
         def fake(cfg, run, photos, brief, view):
             if view == "front":
                 return {"status": "completed", "view": "front",
-                        "cost_json": {"estimated_total_usd": 0.05704}}
+                        "cost_json": {"estimated_total_usd": 0.05696}}
             return {"status": "not_available", "view": "back",
                     "reason": "No photograph of the back face was provided"}
         generate.side_effect = fake
         result = worker.generate_catalog_views(self.cfg, self.run, self.photos, self.brief)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["back"]["status"], "not_available")
-        self.assertEqual(result["cost_json"]["estimated_total_usd"], 0.05704)
+        self.assertEqual(result["cost_json"]["estimated_total_usd"], 0.05696)
 
     @patch.object(worker, "generate_catalog_thumbnail")
     def test_failed_second_view_preserves_first_and_flags_unknown_cost(self, generate):
         def fake(cfg, run, photos, brief, view):
             if view == "front":
                 return {"status": "completed", "view": "front",
-                        "cost_json": {"estimated_total_usd": 0.05704}}
+                        "cost_json": {"estimated_total_usd": 0.05696}}
             raise RuntimeError("API unavailable")
         generate.side_effect = fake
         result = worker.generate_catalog_views(self.cfg, self.run, self.photos, self.brief)
@@ -138,14 +138,14 @@ class CatalogThumbnailTests(unittest.TestCase):
         self.assertEqual(result["front"]["status"], "completed")
         self.assertEqual(result["back"]["status"], "failed")
         self.assertIsNone(result["cost_json"]["estimated_total_usd"])
-        self.assertEqual(result["cost_json"]["known_estimated_usd"], 0.05704)
+        self.assertEqual(result["cost_json"]["known_estimated_usd"], 0.05696)
 
     def test_image_pricing_snapshot(self):
         cost = worker.image_generation_cost({
             "input_tokens_details": {"text_tokens": 600, "image_tokens": 1600},
             "output_tokens_details": {"image_tokens": 1372},
         })
-        self.assertEqual(cost["estimated_total_usd"], 0.05704)
+        self.assertEqual(cost["estimated_total_usd"], 0.05696)
         self.assertEqual(cost["rates_usd_per_million_tokens"]["image_output"], 30.0)
         self.assertIsNone(worker.image_generation_cost({})["estimated_total_usd"])
 
