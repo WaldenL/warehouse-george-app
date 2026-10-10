@@ -95,7 +95,7 @@ AS $function$
     and (nullif(p_filters->>'country','') is null or position(lower(p_filters->>'country') in i.country_text)>0)
     and (p_filters->>'status' is null or i.data#>>'{state,status}'=p_filters->>'status')
     and (p_filters->>'locked' is null or
-         (i.data#>>'{attributes,warehouse_lock,locked}'='true')=(p_filters->>'locked')::boolean)
+         coalesce(i.data#>>'{attributes,warehouse_lock,locked}'='true',false)=(p_filters->>'locked')::boolean)
     and (p_filters->>'label_number' is null or i.label_number=(p_filters->>'label_number')::integer)
     and (p_filters->>'vintage' is null or i.vintage=(p_filters->>'vintage')::integer)
     and (p_filters->>'proof_exact' is null or abs(i.proof-(p_filters->>'proof_exact')::numeric)<0.051)
