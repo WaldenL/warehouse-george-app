@@ -5,6 +5,8 @@ on:
     workflows: ["Deploy Warehouse Lambda (Ohio)"]
     types: [completed]
   workflow_dispatch:
+  push:
+    paths: ['.github/workflows/smoke-search.yml']
 
 permissions:
   id-token: write
@@ -41,6 +43,10 @@ jobs:
           meta=json.load(open("search-invoke.json"))
           result=json.load(open("search-response.json"))
           if meta.get("FunctionError") or result.get("status")!="ok" or result.get("error"):
+              print("Lambda function error:",meta.get("FunctionError"))
+              print("Response keys:",list(result) if isinstance(result,dict) else type(result).__name__)
+              print("Error type:",str(result.get("errorType",""))[:120])
+              print("Error message:",str(result.get("errorMessage",result.get("error","")))[:500])
               raise SystemExit("AI interpretation failed: "+str(result.get("status")))
           filters=result["filters"]
           print("Search:",os.environ["QUERY"])
