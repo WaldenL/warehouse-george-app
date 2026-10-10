@@ -108,6 +108,10 @@ function renderDossier(extraction,bottle){
   })).join("");
   if(rows)html+='<div class="dossier-section"><h3>'+esc(heading)+'</h3><div class="fact-grid">'+rows+'</div></div>';
  }
+ if(extraction?.thumbnail_brief){const t=extraction.thumbnail_brief;
+ const fields=[["Strategy",t.strategy],["Reference photos",(t.canonical_photo_numbers||[]).join(", ")],["Framing",t.show_full_bottle?"Full bottle":"Detail emphasis"],["Crop",t.tight_crop?"Tight":"Normal"],["Identity anchors",(t.identity_anchors||[]).join("; ")],["Optional anchors",(t.optional_anchors||[]).join("; ")],["Simplifications",(t.simplifications_allowed||[]).join("; ")],["Notes",t.notes]];
+ html+='<details class="dossier-section"><summary>AI thumbnail brief (not yet generated)</summary><div class="fact-grid">'+fields.filter(x=>x[1]).map(([k,v])=>'<div class="fact"><span class="fact-key">'+esc(k)+'</span><span class="fact-value">'+esc(v)+'</span></div>').join("")+'</div></details>';
+ }
  if(extraction?.uncertainties?.length)html+='<div class="dossier-section"><h3>Uncertainties</h3><ul class="evidence-list">'+extraction.uncertainties.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>';
  if(extraction?.label_transcriptions?.length)html+='<details><summary>Label transcriptions</summary><ul class="evidence-list">'+extraction.label_transcriptions.map(x=>'<li><strong>Photo '+esc(x.photo_number)+'</strong>: '+esc(x.text)+'</li>').join("")+'</ul></details>';
  $("bottleDossier").innerHTML=html||'<p class="muted">No extracted observations yet.</p>';
