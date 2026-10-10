@@ -34,6 +34,7 @@ jobs:
           cp index.html consent.html site/
           if [ -d assets ]; then cp -a assets site/; fi
           touch site/.nojekyll
+          printf '{ "commit": "%s" }\n' "$GITHUB_SHA" > site/version.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
