@@ -21,6 +21,7 @@
 <section class="card"><h2>Bottle dossier</h2><p class="dossier-note">Photograph-derived observations are preliminary and not verified inventory facts. Unknown fields are omitted; original evidence remains available below.</p><div id="bottleDossier"></div></section>
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editState">Bottle status</label><select id="editState"><option value="uncertain">Uncertain</option><option value="sealed">Sealed</option><option value="open">Open</option><option value="removed">Removed</option></select><p class="tiny">Only bottles explicitly marked Open display an Open tag in the inventory.</p><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
 
+<section class="card"><h2>Research enrichment</h2><p class="muted">Web-researched background, tasting profile, and pairing guidance. This is separate from photographic bottle identification.</p><div class="row"><button id="enrichBottle" type="button">Research bottle</button></div><p id="enrichmentStatus" class="status"></p><div id="enrichmentDetails"></div></section>
 <section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div class="row"><button id="addPhotos" type="button">Add photographs</button><button id="reprocess" type="button">Reprocess from originals</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div><div id="gallery" class="photo-grid"></div></section>
 <section class="card"><details id="rawExtraction"><summary>Complete generator JSON</summary><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></details></section>
 <section class="card"><h2>Processing history</h2><div id="processingSummary" class="muted processing-summary"></div><div id="runs"></div></section></section></div>
@@ -220,11 +221,42 @@ function renderDossier(extraction,bottle){
  if(extraction?.label_transcriptions?.length)html+='<details><summary>Label transcriptions</summary><ul class="evidence-list">'+extraction.label_transcriptions.map(x=>'<li><strong>Photo '+esc(x.photo_number)+'</strong>: '+esc(x.text)+'</li>').join("")+'</ul></details>';
  $("bottleDossier").innerHTML=html||'<p class="muted">No extracted observations yet.</p>';
 }
+
+function renderEnrichment(enrichment){
+ const root=$("enrichmentDetails");
+ if(!enrichment){root.innerHTML='<p class="muted">No enrichment has been researched yet.</p>';return}
+ const notes=enrichment.tasting_notes||{}, profile=enrichment.flavor_profile||{}, pairings=enrichment.food_pairings||[], sources=enrichment.sources||[];
+ const profileRows=Object.entries(profile).filter(([k,v])=>k!=="descriptors"&&Number.isFinite(v)).map(([k,v])=>'<div class="fact"><span class="fact-key">'+esc(factLabel(k))+'</span><span class="fact-value">'+esc(v)+' / 5</span></div>').join("");
+ const notePart=(label,values)=>Array.isArray(values)&&values.length?'<p><strong>'+esc(label)+':</strong> '+esc(values.join(", "))+'</p>':"";
+ root.innerHTML=(enrichment.background_information?'<h3>Background</h3><p>'+esc(enrichment.background_information)+'</p>':"")+
+  '<h3>Tasting notes</h3>'+(notes.summary?'<p>'+esc(notes.summary)+'</p>':"")+notePart("Nose",notes.nose)+notePart("Palate",notes.palate)+notePart("Finish",notes.finish)+
+  (profileRows?'<h3>Flavor profile</h3><div class="fact-grid">'+profileRows+'</div>':"")+
+  (Array.isArray(profile.descriptors)&&profile.descriptors.length?'<p class="muted">Descriptors: '+esc(profile.descriptors.join(", "))+'</p>':"")+
+  (pairings.length?'<h3>Food pairings</h3>'+pairings.map(x=>'<div class="fact"><span class="fact-value">'+esc(x.category)+'</span><div>'+esc((x.examples||[]).join(", "))+'</div><div class="tiny">'+esc(x.rationale||"")+'</div></div>').join(""):"")+
+  (sources.length?'<details><summary>Research sources ('+sources.length+')</summary><ul class="evidence-list">'+sources.map(x=>'<li><a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+esc(x.title||x.url)+'</a>'+(x.source_type?' · '+esc(x.source_type):"")+'</li>').join("")+'</ul></details>':"")+
+  '<p class="tiny">Researched '+esc(enrichment.researched_at||"date unknown")+(enrichment.model?' · '+esc(enrichment.model):"")+'</p>';
+}
+async function queueEnrichment(){
+ if(!currentBottle)return;
+ $("enrichBottle").disabled=true;status("enrichmentStatus","Queueing web research…");
+ try{
+  const row={bottle_id:currentBottle.id,status:"queued"};
+  const inserted=await supabase.from("bottle_enrichment_runs").insert(row).select("id").single();
+  if(inserted.error)throw Error(inserted.error.message);
+  const dispatched=await supabase.functions.invoke("warehouse-dispatch",{body:{enrichment_run_id:inserted.data.id}});
+  if(dispatched.error||!dispatched.data?.accepted)throw Error(dispatched.data?.error||dispatched.error?.message||"Research dispatch failed");
+  status("enrichmentStatus","Research queued. Refresh this bottle in a moment to see the result.");
+ }catch(e){status("enrichmentStatus",e.message||"Could not queue research.",true)}
+ finally{$("enrichBottle").disabled=false}
+}
+$("enrichBottle").onclick=queueEnrichment;
+
 async function openBottle(id){
  displayedRunToken++;
  const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).is("removed_at",null).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
  if(b.error||m.error||r.error){alert(b.error?.message||m.error?.message||r.error?.message);return}
  currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
+ renderEnrichment((b.data.data||{}).enrichment); $("enrichBottle").textContent=(b.data.data||{}).enrichment?"Research again":"Research bottle"; status("enrichmentStatus","");
  const d=b.data.data||{};const isLocked=d.attributes?.warehouse_lock?.locked===true;
  $("toggleLock").textContent=isLocked?"Unlock bottle":"Lock bottle";
  $("toggleLock").setAttribute("aria-pressed",String(isLocked));
