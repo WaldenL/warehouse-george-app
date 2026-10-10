@@ -5,7 +5,8 @@
     "schema_version",
     "observations",
     "label_transcriptions",
-    "uncertainties"
+    "uncertainties",
+    "thumbnail_brief"
   ],
   "properties": {
     "schema_version": {
@@ -123,6 +124,66 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "thumbnail_brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "canonical_photo_numbers",
+        "show_full_bottle",
+        "tight_crop",
+        "identity_anchors",
+        "optional_anchors",
+        "simplifications_allowed",
+        "notes"
+      ],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "label_forward",
+            "shape_forward",
+            "balanced"
+          ]
+        },
+        "canonical_photo_numbers": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "show_full_bottle": {
+          "type": "boolean"
+        },
+        "tight_crop": {
+          "type": "boolean"
+        },
+        "identity_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "simplifications_allowed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     }
   }
