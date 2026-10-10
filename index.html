@@ -2,11 +2,20 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>Warehouse George</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#101318;--panel:#1a2028;--line:#34404d;--text:#f6f7fa;--muted:#aab5c4;--gold:#d7ae67;--green:#9ce2b6}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:920px;padding:22px 16px 80px;margin:auto}h1{margin:0;font-size:1.7rem}h2{font-size:1.15rem;margin:0 0 12px}h3{font-size:1rem;margin:16px 0 7px}.muted,.status{color:var(--muted);font-size:.9rem;line-height:1.5}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}section.card,article.card{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:17px;margin-bottom:14px}button,.pick{background:#273340;color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-weight:650;padding:10px 15px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.primary{background:var(--gold);color:#1b1710;border-color:var(--gold)}button:disabled{opacity:.55}textarea{width:100%;min-height:90px;resize:vertical}textarea,input,select{font:inherit;font-size:16px;padding:11px;background:#222c37;color:var(--text);border:1px solid var(--line);border-radius:9px;max-width:100%}input[type=file]{width:100%;margin:8px 0 12px}label{display:block;font-size:.9rem;font-weight:650;margin-bottom:7px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.hidden{display:none!important}.tabs{display:flex;gap:7px;margin:0 0 15px}.activeTab{background:var(--gold);color:#15110a}.bottles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bottle{display:flex;gap:11px;align-items:center;justify-content:flex-start;width:100%;text-align:left;min-height:112px}.bottle img{height:96px;width:65px;flex:0 0 65px;object-fit:contain;border-radius:5px}.bottle>.bottle-copy{flex:1;min-width:0}.name{font-weight:760}.bottle-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}.bottle-tags .tiny{margin-top:0}.open-tag{display:inline-block;padding:2px 7px;border:1px solid var(--gold);border-radius:6px;color:var(--gold);font-size:.72rem;font-weight:700;vertical-align:middle;white-space:nowrap}.lock-tag{display:inline-block;padding:2px 7px;border:1px solid var(--gold);border-radius:6px;background:rgba(215,174,103,.14);color:var(--gold);font-size:.72rem;font-weight:750;white-space:nowrap}.name-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}.name-heading h2{margin:0}.name-heading button{min-height:34px;padding:5px 10px;font-size:.85rem}.name-editor{margin:9px 0 12px}.name-editor input{width:100%}.tiny{font-size:.77rem;color:var(--muted);margin-top:6px}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.photo img{width:100%;height:205px;object-fit:contain;border-radius:9px}.photo{padding:9px;border-radius:10px}.photo strong{display:block;margin-bottom:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;background:#111820;padding:12px;border-radius:10px;max-height:650px;overflow:auto}.fact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 20px}.fact{padding:9px 0;border-bottom:1px solid var(--line);min-width:0}.fact-key{display:block;color:var(--muted);font-size:.78rem;margin-bottom:3px}.fact-value{font-weight:550;overflow-wrap:anywhere}.dossier-note{color:var(--muted);font-size:.8rem;margin:0 0 12px}.evidence-list{margin:8px 0 0;padding-left:20px}.evidence-list li{margin-bottom:9px}.dossier-section{margin-bottom:14px}.dossier-section h3{color:var(--gold)}details summary{cursor:pointer;font-weight:650;padding:8px 0}.hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.catalog-views{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}.catalog-view{display:flex;flex-direction:column;align-items:center;gap:4px}.catalog-view img{width:135px;height:205px;object-fit:contain;border-radius:8px;cursor:zoom-in;background:#242b33}.catalog-view .tiny{margin-top:0}.hero{align-items:flex-start}.status{margin:12px 0}.error{color:#ffacac}.success{color:var(--green)}dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;max-width:95vw}dialog img{max-width:85vw;max-height:75vh;object-fit:contain;display:block;margin-top:10px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:920px;padding:22px 16px 80px;margin:auto}h1{margin:0;font-size:1.7rem}h2{font-size:1.15rem;margin:0 0 12px}h3{font-size:1rem;margin:16px 0 7px}.muted,.status{color:var(--muted);font-size:.9rem;line-height:1.5}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}section.card,article.card{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:17px;margin-bottom:14px}button,.pick{background:#273340;color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-weight:650;padding:10px 15px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.primary{background:var(--gold);color:#1b1710;border-color:var(--gold)}button:disabled{opacity:.55}textarea{width:100%;min-height:90px;resize:vertical}textarea,input,select{font:inherit;font-size:16px;padding:11px;background:#222c37;color:var(--text);border:1px solid var(--line);border-radius:9px;max-width:100%}input[type=file]{width:100%;margin:8px 0 12px}label{display:block;font-size:.9rem;font-weight:650;margin-bottom:7px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.hidden{display:none!important}.tabs{display:flex;gap:7px;margin:0 0 15px}.activeTab{background:var(--gold);color:#15110a}.search-form{margin:0 0 10px}.search-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}.search-row input{flex:1;min-width:180px}.search-summary{margin:4px 0 12px}.inventory-paging{justify-content:center;margin-top:16px}.bottles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bottle{display:flex;gap:11px;align-items:center;justify-content:flex-start;width:100%;text-align:left;min-height:112px}.bottle img{height:96px;width:65px;flex:0 0 65px;object-fit:contain;border-radius:5px}.bottle>.bottle-copy{flex:1;min-width:0}.name{font-weight:760}.bottle-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}.bottle-tags .tiny{margin-top:0}.open-tag{display:inline-block;padding:2px 7px;border:1px solid var(--gold);border-radius:6px;color:var(--gold);font-size:.72rem;font-weight:700;vertical-align:middle;white-space:nowrap}.lock-tag{display:inline-block;padding:2px 7px;border:1px solid var(--gold);border-radius:6px;background:rgba(215,174,103,.14);color:var(--gold);font-size:.72rem;font-weight:750;white-space:nowrap}.name-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}.name-heading h2{margin:0}.name-heading button{min-height:34px;padding:5px 10px;font-size:.85rem}.name-editor{margin:9px 0 12px}.name-editor input{width:100%}.tiny{font-size:.77rem;color:var(--muted);margin-top:6px}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.photo img{width:100%;height:205px;object-fit:contain;border-radius:9px}.photo{padding:9px;border-radius:10px}.photo strong{display:block;margin-bottom:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;background:#111820;padding:12px;border-radius:10px;max-height:650px;overflow:auto}.fact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 20px}.fact{padding:9px 0;border-bottom:1px solid var(--line);min-width:0}.fact-key{display:block;color:var(--muted);font-size:.78rem;margin-bottom:3px}.fact-value{font-weight:550;overflow-wrap:anywhere}.dossier-note{color:var(--muted);font-size:.8rem;margin:0 0 12px}.evidence-list{margin:8px 0 0;padding-left:20px}.evidence-list li{margin-bottom:9px}.dossier-section{margin-bottom:14px}.dossier-section h3{color:var(--gold)}details summary{cursor:pointer;font-weight:650;padding:8px 0}.hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.catalog-views{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}.catalog-view{display:flex;flex-direction:column;align-items:center;gap:4px}.catalog-view img{width:135px;height:205px;object-fit:contain;border-radius:8px;cursor:zoom-in;background:#242b33}.catalog-view .tiny{margin-top:0}.hero{align-items:flex-start}.status{margin:12px 0}.error{color:#ffacac}.success{color:var(--green)}dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;max-width:95vw}dialog img{max-width:85vw;max-height:75vh;object-fit:contain;display:block;margin-top:10px}
 </style></head><body><main><header><div><h1>Warehouse George</h1><div class="muted">Bottle inventory · photographic evidence · versioned extraction</div></div><div class="row"><button id="passwordSettings" class="hidden">Set/change password</button><button id="logout" class="hidden">Sign out</button></div></header>
 <section class="card" id="login"><h2>Sign in</h2><p class="muted">Use your Warehouse email and password. Magic links remain available if you have not set a password yet.</p><form id="loginForm"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required placeholder="Email"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required placeholder="Password"><div class="row"><button id="signIn" class="primary" type="submit">Sign in</button><button id="sendLink" type="button">Email a magic link</button></div></form><p class="status" id="loginStatus"></p></section>
 <div id="app" class="hidden"><div class="tabs"><button id="tabInventory" class="activeTab">Inventory</button><button id="tabAdd">Add bottle</button></div>
-<section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div><div id="bottleList" class="bottles"></div></section>
+<section id="inventory"><div class="row"><h2 style="flex:1">Your bottles</h2><button id="refresh">Refresh</button></div>
+<form id="searchForm" class="search-form">
+ <label for="searchPrompt">Ask Warehouse to find bottles</label>
+ <div class="search-row"><input id="searchPrompt" type="search" maxlength="300" autocomplete="off" placeholder="e.g. My unlocked 100-proof bourbons">
+ <button id="searchButton" type="submit" class="primary">Search</button><button id="clearSearch" type="button" disabled>Clear</button></div>
+</form>
+<p id="searchStatus" class="status" role="status" aria-live="polite"></p>
+<p id="searchInterpretation" class="muted search-summary"></p>
+<div id="bottleList" class="bottles"></div>
+<div id="inventoryPaging" class="row inventory-paging hidden"><button id="prevPage" type="button">← Previous</button><span id="pageInfo" class="tiny"></span><button id="nextPage" type="button">Next →</button></div></section>
 <section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="additionalInstructions">Additional instructions for visual extraction (optional)</label><textarea id="additionalInstructions" placeholder="For example: focus on the handwritten barrel number. Treat this as context, not proof of what is visible."></textarea><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
 <section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny" style="flex:1"></span><button id="refreshDetail" type="button">Refresh</button></div><section class="card"><div class="hero"><div class="catalog-views"><div class="catalog-view"><img id="detailThumb" alt="Front catalog depiction"><span class="tiny" id="frontCaption">Front</span></div><div class="catalog-view hidden" id="backCatalogView"><img id="detailBackThumb" alt="Back catalog depiction"><span class="tiny">Back · AI depiction</span></div></div><div style="min-width:0;flex:1"><div class="name-heading"><h2 id="detailName"></h2><button id="editName" type="button" aria-label="Edit bottle name">Edit name</button><button id="toggleLock" type="button">Lock bottle</button></div><div id="detailLockStatus" class="hidden"><span class="lock-tag">🔒 Locked · do not open</span></div><div id="nameEditor" class="name-editor hidden"><label for="editTitle">Bottle name (leave blank to use extracted identity)</label><input id="editTitle" placeholder="Enter the preferred bottle name"><div class="row"><button id="saveName" type="button" class="primary">Save name</button><button id="cancelName" type="button">Cancel</button></div><p id="nameStatus" class="status"></p></div><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div><div class="row"><button id="viewGenerated" class="hidden">View full front</button><button id="viewGeneratedBack" class="hidden">View full back</button><button id="toggleThumb" class="hidden">Show photo thumbnail</button></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editState">Bottle status</label><select id="editState"><option value="uncertain">Uncertain</option><option value="sealed">Sealed</option><option value="open">Open</option><option value="removed">Removed</option></select><p class="tiny">Only bottles explicitly marked Open display an Open tag in the inventory.</p><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
@@ -26,10 +35,46 @@ const fileName=x=>(x||"photo").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,90);
 const publicThumb=path=>path?supabase.storage.from("warehouse-thumbnails").getPublicUrl(path).data.publicUrl:"";
 let currentBottle=null,mediaCache=[],runCache=[];
 let inventoryLoadedUserId=null;
+const inventoryPageSize=50;
+let inventoryPage=0,inventoryFilters={},inventoryInterpretation="",inventoryRequestSeq=0,searchBusy=false;
 const generatorArtifactCache=new Map();let displayedRunToken=0;
 function tab(section){$("inventory").classList.toggle("hidden",section!=="inventory");$("add").classList.toggle("hidden",section!=="add");$("detail").classList.toggle("hidden",section!=="detail");$("tabInventory").classList.toggle("activeTab",section==="inventory");$("tabAdd").classList.toggle("activeTab",section==="add");}
 $("tabInventory").onclick=()=>tab("inventory");$("tabAdd").onclick=()=>tab("add");$("back").onclick=()=>tab("inventory");
 $("refresh").onclick=()=>loadInventory();
+$("searchPrompt").oninput=()=>{$("clearSearch").disabled=!$("searchPrompt").value.trim()&&!Object.keys(inventoryFilters).length;};
+$("searchForm").onsubmit=async event=>{
+ event.preventDefault();
+ if(searchBusy)return;
+ const query=$("searchPrompt").value.trim();
+ if(!query){status("searchStatus","Enter a request, or click Clear to show all bottles.",true);return}
+ searchBusy=true;$("searchButton").disabled=true;
+ status("searchStatus","Interpreting your search…");
+ try{
+  const {data,error}=await supabase.functions.invoke("warehouse-search-interpret",{body:{query}});
+  if(error){
+   let detail=null;
+   try{detail=await error.context?.json?.()}catch{}
+   throw Error(detail?.error||error.message||"Search unavailable");
+  }
+  if(data?.error)throw Error(data.error);
+  if(!data?.filters||typeof data.filters!=="object")throw Error("Search returned no usable filters.");
+  inventoryFilters=data.filters;
+  inventoryInterpretation=String(data.interpretation||"Matching bottles");
+  inventoryPage=0;
+  await loadInventory(0);
+  status("searchStatus","");
+ }catch(e){status("searchStatus",e.message||"Search failed.",true)}
+ finally{searchBusy=false;$("searchButton").disabled=false;$("clearSearch").disabled=false}
+};
+$("clearSearch").onclick=()=>{
+ $("searchPrompt").value="";
+ inventoryFilters={};inventoryInterpretation="";inventoryPage=0;
+ status("searchStatus","");
+ $("clearSearch").disabled=true;
+ loadInventory(0);
+};
+$("prevPage").onclick=()=>{if(inventoryPage>0)loadInventory(inventoryPage-1)};
+$("nextPage").onclick=()=>loadInventory(inventoryPage+1);
 $("refreshDetail").onclick=()=>{if(currentBottle)openBottle(currentBottle.id)};
 $("loginForm").onsubmit=async e=>{e.preventDefault();$("signIn").disabled=true;try{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});status("loginStatus",error?error.message:"Signed in.",!!error);if(!error){$("password").value="";await refreshAuth()}}finally{$("signIn").disabled=false}};
 $("sendLink").onclick=async()=>{const email=$("email").value.trim();if(!email){status("loginStatus","Enter your email address first.",true);return}const r=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split("?")[0],shouldCreateUser:false}});status("loginStatus",r.error?r.error.message:"Check your email for the login link.",!!r.error)};
@@ -48,6 +93,8 @@ async function refreshAuth(){
  const userId=data.user?.id||null;
  if(inventoryLoadedUserId!==userId){
   inventoryLoadedUserId=userId;
+  inventoryPage=0;inventoryFilters={};inventoryInterpretation="";inventoryRequestSeq++;
+  $("searchPrompt").value="";$("searchInterpretation").textContent="";status("searchStatus","");$("clearSearch").disabled=true;
   currentBottle=null;mediaCache=[];runCache=[];
   generatorArtifactCache.clear();signedImageCache.clear();
   $("bottleList").replaceChildren();
@@ -98,10 +145,26 @@ $("create").onclick=async()=>{
  }catch(e){status("addStatus","Ingestion stopped: "+e.message+(bottleId?" · Bottle ID: "+bottleId:""),true);if(bottleId)await openBottle(bottleId);}
  finally{$("create").disabled=false}
 };
-async function loadInventory(){
- const r=await supabase.from("bottles").select("id,label_number,data,created_at").order("created_at",{ascending:false});
- if(r.error){$("bottleList").textContent=r.error.message;return}
- const list=r.data||[];
+async function loadInventory(page=inventoryPage){
+ const seq=++inventoryRequestSeq;
+ const nextPage=Math.max(0,Math.floor(page));
+ $("refresh").disabled=true;
+ const r=await supabase.rpc("warehouse_filter_bottles",{
+  p_filters:inventoryFilters,p_limit:inventoryPageSize,p_offset:nextPage*inventoryPageSize
+ });
+ if(seq!==inventoryRequestSeq)return;
+ $("refresh").disabled=false;
+ if(r.error){status("searchStatus","Could not load bottles: "+r.error.message,true);return}
+ inventoryPage=nextPage;
+ const list=r.data||[],total=Number(list[0]?.total_count||0);
+ const first=total?inventoryPage*inventoryPageSize+1:0;
+ const last=total?Math.min(total,(inventoryPage+1)*inventoryPageSize):0;
+ $("searchInterpretation").textContent=(inventoryInterpretation?inventoryInterpretation+" · ":"")+
+  (total?("Showing "+first+"–"+last+" of "+total+" bottles"):(inventoryInterpretation?"No matching bottles":""));
+ $("inventoryPaging").classList.toggle("hidden",total<=inventoryPageSize);
+ $("pageInfo").textContent=total?("Page "+(inventoryPage+1)+" of "+Math.ceil(total/inventoryPageSize)):"";
+ $("prevPage").disabled=inventoryPage===0;
+ $("nextPage").disabled=last>=total;
  $("bottleList").innerHTML=list.map(b=>{
   const x=b.data?.processing?.extracted_summary||b.data?.identity||{};
   const manualName=b.data?.identity?.product_name;
@@ -112,7 +175,7 @@ async function loadInventory(){
    (b.label_number?'<span class="tiny">Warehouse #'+esc(b.label_number)+'</span>':"");
   return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="Bottle catalog image">':"")+
    '<div class="bottle-copy"><div class="name">'+esc(title)+'</div>'+(tags?'<div class="bottle-tags">'+tags+'</div>':"")+'</div></button>';
- }).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
+ }).join("")||(inventoryInterpretation?'<p class="muted">No bottles match this search. Try different wording or clear the search.</p>':'<p class="muted">No bottles yet. Add your first bottle to begin.</p>');
  $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
 }
 const signedImageCache=new Map();
