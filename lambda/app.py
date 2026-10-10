@@ -7,7 +7,7 @@ from rembg import remove, new_session
 TIMEOUT=40
 from pathlib import Path
 ASSET_DIR=Path(__file__).resolve().parent
-EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction_v1_3.md").read_text(encoding="utf-8")
+EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction_v1_4.md").read_text(encoding="utf-8")
 EXTRACTION_SCHEMA=json.loads((ASSET_DIR / "schemas" / "warehouse_visual_v1_3.json").read_text(encoding="utf-8"))
 def now(): return datetime.now(timezone.utc).isoformat()
 def secret():
@@ -113,7 +113,7 @@ def process(event):
         result_path=f"runs/aws/{rid}/result.json"
         artifact={"schema_version":"warehouse_visual_v1_3","extraction":parsed,"model":model,"usage":usage,"cost":cost,"background_fallback_media_ids":fallback,"prompt":EXTRACTION_PROMPT}
         storage(cfg,"POST","warehouse-media",result_path,json.dumps(artifact).encode(),"application/json")
-        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_v1_3","prompt_version":"warehouse_visual_v1_3","model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
+        api(cfg,"PATCH","bottle_processing_runs",{"status":"completed","schema_version":"warehouse_visual_v1_3","prompt_version":"warehouse_visual_prompt_v1_4","model":model,"working_image_paths":paths,"thumbnail_path":thumb,"extraction_json":parsed,"usage_json":usage,"cost_json":cost,"completed_at":now(),"error_message":None},params={"id":"eq."+rid})
         if bottle:
             data=bottle[0].get("data") or {};p=data.get("processing") or {}
             p.update({"status":"ready","latest_run_id":rid,"thumbnail_path":thumb,"extracted_identity":parsed.get("identity"),"extracted_specification":parsed.get("specification")})
