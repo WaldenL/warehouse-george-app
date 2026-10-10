@@ -89,7 +89,7 @@ const signedImageCache=new Map();
 async function signedImage(path){const item=signedImageCache.get(path);if(item&&item.expiresAt>Date.now())return item.url;const r=await supabase.storage.from("warehouse-media").createSignedUrl(path,3600);if(r.error)throw Error(r.error.message);signedImageCache.set(path,{url:r.data.signedUrl,expiresAt:Date.now()+55*60*1000});return r.data.signedUrl}
 async function showImage(path){$("large").src=await signedImage(path);$("viewer").showModal()}
 $("closeViewer").onclick=()=>$("viewer").close();
-const obsMap=e=>Object.fromEntries((e?.observations||[]).map(o=>[o.field,o]));
+const obsMap=e=>{const grouped={};for(const o of e?.observations||[])(grouped[o.field]??=[]).push(o);return grouped};
 const observationGroups=[
  ["Identity",["brand","expression","packaging_designation","category","subcategory","country","region","producer_label_text"]],
  ["Production and release",["distillery_label_text","bottler_label_text","importer_label_text","distilled_and_bottled_by_label_text","distilled_year","barreled_year","bottled_year","vintage_year","release_year","stated_age","barrel_number","batch_number","cask_type","finish"]],
@@ -102,10 +102,9 @@ const factLabel=k=>k.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase()).rep
 function renderDossier(extraction,bottle){
  const facts=obsMap(extraction);let html="";
  for(const [heading,names] of observationGroups){
-  const rows=names.filter(k=>facts[k]?.value).map(k=>{
-   const o=facts[k];const ref="Photo"+(o.photos.length===1?" ":"s ")+o.photos.join(", ");
+  const rows=names.flatMap(k=>(facts[k]||[]).filter(o=>o.value).map(o=>{const ref="Photo"+(o.photos.length===1?" ":"s ")+o.photos.join(", ");
    return '<div class="fact"><span class="fact-key">'+esc(factLabel(k))+'</span><span class="fact-value">'+esc(o.value)+'</span><div class="tiny">'+esc(ref+" · "+o.basis)+"</div><div class='tiny'>"+esc(o.evidence_text)+'</div></div>';
-  }).join("");
+  })).join("");
   if(rows)html+='<div class="dossier-section"><h3>'+esc(heading)+'</h3><div class="fact-grid">'+rows+'</div></div>';
  }
  if(extraction?.uncertainties?.length)html+='<div class="dossier-section"><h3>Uncertainties</h3><ul class="evidence-list">'+extraction.uncertainties.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>';
@@ -118,7 +117,7 @@ async function openBottle(id){
  currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
  const extract=runCache.find(x=>x.status==="completed")?.extraction_json;
  renderDossier(extract,b.data);
- const facts=obsMap(extract);const ident={brand:facts.brand?.value,expression:facts.expression?.value,category:facts.category?.value,region:facts.region?.value};$("detailName").textContent=[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
+ const facts=obsMap(extract);const ident={brand:facts.brand?.[0]?.value,expression:facts.expression?.[0]?.value,category:facts.category?.[0]?.value,region:facts.region?.[0]?.value};$("detailName").textContent=[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
  $("detailSummary").textContent=[ident.category,ident.region,b.data.label_number?"Warehouse #"+b.data.label_number:""].filter(Boolean).join(" · ");
  const publicUrl=publicThumb(b.data.data?.processing?.thumbnail_path);$("detailThumb").src=publicUrl||"";$("detailThumb").style.visibility=publicUrl?"visible":"hidden";
  $("gallery").replaceChildren();for(const [i,media] of mediaCache.entries()){
