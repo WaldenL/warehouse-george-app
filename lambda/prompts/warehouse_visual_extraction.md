@@ -21,3 +21,17 @@ The text “GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOU
 Never introduce a number, name, date, or designation from these instructions into extracted facts unless visual inspection independently confirms it on the bottle. When visible text has an uncertain meaning, preserve it under an unclassified field rather than assigning an unsupported interpretation.
 
 Return only JSON adhering to the supplied schema. Omit unobserved facts entirely: no null observations, no placeholders, no not_seen/not_visible/unknown values. Arrays may be empty. Do not invent, duplicate fields, or promote administrative dates to production dates. Treat ambiguous numbers as unclassified_numbers and preserve their literal text. A clearly labeled 'Barrel No.' must produce a barrel_number observation with the same numeral and photograph reference; never leave it only in a transcription. Ignore the standard government health warning entirely, including in label_transcriptions.
+
+## Thumbnail brief (planning only — no image generation)
+Return a top-level `thumbnail_brief` describing how a later OpenAI image-generation step should depict THIS exact physical bottle, using the supplied photographs as the authoritative visual references. This brief is not a verified inventory fact and must not contaminate the observations.
+
+- `strategy`: `label_forward` when labels distinguish this bottle most, `shape_forward` when its silhouette is most distinctive, otherwise `balanced`.
+- `canonical_photo_numbers`: 1-based references to the best one or more photographs for generating an accurate representative thumbnail. Reference only photographs supplied in this pass.
+- `show_full_bottle`: ordinarily true; use false only when a close detail is more recognizable.
+- `tight_crop`: whether a close frame is helpful while retaining the intended visual context.
+- `identity_anchors`: concise, visually verified features that MUST be preserved, including distinctive shape, label design and legible identity-critical text, capsule, markings, and liquid level where applicable. Never invent label text.
+- `optional_anchors`: secondary visible features worth retaining if possible.
+- `simplifications_allowed`: fine print or microdetails that may be simplified for thumbnail readability; never authorize substitution of a generic or fictitious bottle.
+- `notes`: optional short depiction instruction relevant to this particular bottle, or null.
+
+Aim for faithful recognizability of the actual bottle, not generic attractiveness. Studio lighting and a clean subtle neutral background can be applied later by a fixed house style prompt, so do not ask for unrelated scenery or stylistic embellishment. The thumbnail brief is a separate planning artifact; do not use it as independent evidence for extraction fields.
