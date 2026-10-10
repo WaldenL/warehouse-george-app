@@ -18,7 +18,7 @@ PRICING_SOURCE="https://platform.openai.com/pricing/"
 PRICING_DATE="2026-10-10"
 # Standard (non-Batch) USD per million tokens. Snapshot each run's rates.
 EXTRACTION_RATES={"input":0.40,"output":1.60}
-ENRICHMENT_RATES={"input":4.00,"cached_input":0.40,"output":20.00}
+ENRICHMENT_RATES={"input":4.00,"cached_input":0.40,"cache_write":5.00,"output":20.00}
 WEB_SEARCH_PRICE=0.01
 IMAGE_RATES={"text_input":5.00,"image_input":8.00,"image_output":30.00}
 def now(): return datetime.now(timezone.utc).isoformat()
@@ -109,11 +109,14 @@ def enrichment_cost(usage,model,web_calls):
                 "web_search_estimated_usd":round(web_calls*WEB_SEARCH_PRICE,8),
                 "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE}
     inp=int(usage.get("input_tokens") or 0)
-    cached=int((usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
+    details=usage.get("input_tokens_details") or {}
+    cached=int(details.get("cached_tokens") or 0)
+    cache_write=int(details.get("cache_write_tokens") or 0)
     out=int(usage.get("output_tokens") or 0)
-    uncached=max(0,inp-cached)
+    uncached=max(0,inp-cached-cache_write)
     token_cost=(uncached*ENRICHMENT_RATES["input"]+
                 cached*ENRICHMENT_RATES["cached_input"]+
+                cache_write*ENRICHMENT_RATES["cache_write"]+
                 out*ENRICHMENT_RATES["output"])/1000000
     web_cost=web_calls*WEB_SEARCH_PRICE
     return {"status":"estimated","estimated_total_usd":round(token_cost+web_cost,8),
@@ -123,7 +126,7 @@ def enrichment_cost(usage,model,web_calls):
             "currency":"USD","type":"estimate","model":model,
             "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE,
             "rates_usd_per_million_tokens":dict(ENRICHMENT_RATES),
-            "token_breakdown":{"uncached_input":uncached,"cached_input":cached,"output":out},
+            "token_breakdown":{"uncached_input":uncached,"cached_input":cached,"cache_write_input":cache_write,"output":out},
             "token_usage":usage}
 
 
