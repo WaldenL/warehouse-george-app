@@ -167,22 +167,28 @@ def generate_catalog_thumbnail(cfg,run,photos,brief,view):
     full=io.BytesIO()
     generated.save(full,"PNG",optimize=True)
     bid,rid=run["bottle_id"],run["id"]
-    full_path=f"bottles/{bid}/generated/{rid}/{view}.png"
-    preview_path=f"bottles/{bid}/generated/{rid}/{view}-preview.png"
-    storage(cfg,"POST","warehouse-media",full_path,full.getvalue(),"image/png")
-    preview=Image.new("RGB",(192,288),(244,244,242))
-    scaled=generated.copy()
-    scaled.thumbnail((184,280),Image.Resampling.LANCZOS)
-    preview.paste(scaled,((192-scaled.width)//2,(288-scaled.height)//2))
-    small=io.BytesIO()
-    preview.save(small,"PNG")
-    storage(cfg,"POST","warehouse-thumbnails",preview_path,small.getvalue(),"image/png")
+    # Unique paths prevent retry collisions while retaining the run ID for auditing.
+    asset_id=uuid.uuid4().hex
+    full_path=f"bottles/{bid}/generated/{rid}/{view}-{asset_id}.png"
+    preview_path=f"bottles/{bid}/generated/{rid}/{view}-{asset_id}-preview.png"
     usage=payload.get("usage") or {}
-    return {"status":"completed","kind":"ai_generated_catalog_depiction","view":view,
-            "model":IMAGE_MODEL,"prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16],
-            "source_photo_numbers":selected,"full_image_path":full_path,"preview_path":preview_path,
-            "size":[generated.width,generated.height],"usage":usage,
-            "cost_json":image_generation_cost(usage),"generated_at":now()}
+    audit={"kind":"ai_generated_catalog_depiction","view":view,"model":IMAGE_MODEL,
+           "prompt_sha256":"sha256:"+hashlib.sha256(THUMBNAIL_PROMPT.encode("utf-8")).hexdigest()[:16],
+           "source_photo_numbers":selected,"size":[generated.width,generated.height],
+           "usage":usage,"cost_json":image_generation_cost(usage),"generated_at":now()}
+    try:
+        storage(cfg,"POST","warehouse-media",full_path,full.getvalue(),"image/png")
+        preview=Image.new("RGB",(192,288),(244,244,242))
+        scaled=generated.copy()
+        scaled.thumbnail((184,280),Image.Resampling.LANCZOS)
+        preview.paste(scaled,((192-scaled.width)//2,(288-scaled.height)//2))
+        small=io.BytesIO()
+        preview.save(small,"PNG")
+        storage(cfg,"POST","warehouse-thumbnails",preview_path,small.getvalue(),"image/png")
+    except Exception as exc:
+        # The API may have billed even if storage failed; preserve returned usage.
+        return {**audit,"status":"failed","error":"Generated image storage failed: "+str(exc)[:350]}
+    return {**audit,"status":"completed","full_image_path":full_path,"preview_path":preview_path}
 
 
 def generate_catalog_views(cfg,run,photos,brief):
@@ -204,7 +210,7 @@ def generate_catalog_views(cfg,run,photos,brief):
     else:
         overall="not_available"
     costs=[views[v].get("cost_json",{}).get("estimated_total_usd") for v in ("front","back")
-           if views[v]["status"]=="completed"]
+           if views[v]["status"] in ("completed","failed") and views[v].get("cost_json")]
     complete=all(v is not None for v in costs) and "failed" not in statuses
     estimated=round(sum(v for v in costs if v is not None),8)
     return {"kind":"ai_generated_catalog_depictions","status":overall,"model":IMAGE_MODEL,
