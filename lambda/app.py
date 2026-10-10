@@ -18,6 +18,8 @@ PRICING_SOURCE="https://platform.openai.com/pricing/"
 PRICING_DATE="2026-10-10"
 # Standard (non-Batch) USD per million tokens. Snapshot each run's rates.
 EXTRACTION_RATES={"input":0.40,"output":1.60}
+ENRICHMENT_RATES={"input":4.00,"cached_input":0.40,"output":20.00}
+WEB_SEARCH_PRICE=0.01
 IMAGE_RATES={"text_input":5.00,"image_input":8.00,"image_output":30.00}
 def now(): return datetime.now(timezone.utc).isoformat()
 def secret():
@@ -96,6 +98,33 @@ def extraction_cost(usage):
             "pricing_date":PRICING_DATE,"pricing_source":PRICING_SOURCE,
             "model":"gpt-4.1-mini","rates_usd_per_million_tokens":dict(EXTRACTION_RATES),
             "token_breakdown":{"input":inp,"output":out}}
+
+
+def enrichment_cost(usage,model,web_calls):
+    # gpt-5.6 resolves to GPT-5.6 Sol; snapshot rates with each run.
+    if model not in ("gpt-5.6","gpt-5.6-sol") and not model.startswith("gpt-5.6-sol-"):
+        return {"status":"unavailable","estimated_total_usd":None,"currency":"USD",
+                "reason":"No verified token rates for returned model "+str(model),
+                "model":model,"token_usage":usage,"web_search_calls":web_calls,
+                "web_search_estimated_usd":round(web_calls*WEB_SEARCH_PRICE,8),
+                "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE}
+    inp=int(usage.get("input_tokens") or 0)
+    cached=int((usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
+    out=int(usage.get("output_tokens") or 0)
+    uncached=max(0,inp-cached)
+    token_cost=(uncached*ENRICHMENT_RATES["input"]+
+                cached*ENRICHMENT_RATES["cached_input"]+
+                out*ENRICHMENT_RATES["output"])/1000000
+    web_cost=web_calls*WEB_SEARCH_PRICE
+    return {"status":"estimated","estimated_total_usd":round(token_cost+web_cost,8),
+            "token_estimated_usd":round(token_cost,8),
+            "web_search_estimated_usd":round(web_cost,8),
+            "web_search_calls":web_calls,"web_search_pricing_usd_per_call":WEB_SEARCH_PRICE,
+            "currency":"USD","type":"estimate","model":model,
+            "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE,
+            "rates_usd_per_million_tokens":dict(ENRICHMENT_RATES),
+            "token_breakdown":{"uncached_input":uncached,"cached_input":cached,"output":out},
+            "token_usage":usage}
 
 
 def image_generation_cost(usage):
@@ -429,14 +458,7 @@ def enrich(event):
         },ensure_ascii=False).encode("utf-8"),"application/json")
         usage=result.get("usage") or {}
         web_calls=sum(1 for item in result.get("output",[]) if item.get("type")=="web_search_call")
-        # Pricing must be checked for the exact billed model; unverified model rates
-        # are not silently represented as dollars.
-        cost={"status":"unavailable","estimated_total_usd":None,"currency":"USD",
-              "reason":"Exact gpt-5.6 model token rates not verified",
-              "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE,
-              "web_search_calls":web_calls,"web_search_estimated_usd":round(web_calls*0.01,8),
-              "web_search_pricing_usd_per_call":0.01,
-              "token_usage":usage,"model":result.get("model","gpt-5.6")}
+        cost=enrichment_cost(usage,result.get("model","gpt-5.6"),web_calls)
         api(cfg,"PATCH","bottle_processing_runs",
             {"model":result.get("model","gpt-5.6"),"usage_json":usage,"cost_json":cost},
             params={"id":"eq."+rid})
