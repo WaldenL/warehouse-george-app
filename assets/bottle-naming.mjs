@@ -33,6 +33,10 @@ export function bottleDisplayName(data={},observed={}){
   const wine=!!(/^\d{4}$/.test(vintage)&&(wineType.test(category)||grape||appellation&&!spiritsType.test(category)));
   const age=ageLabel(field("stated_age"));
   if(/^Family Estate Bottled Single Barrel Bourbon$/i.test(expression))expression="Family Estate";
+  // A Willett single-barrel Rare Release is sold as Family Estate even if
+  // the photo extraction omitted that phrase. Display heuristic only.
+  if(!expression&&/^Willett$/i.test(brand)&&/\\bbourbon\\b/i.test(category)&&
+     /\\brare release\\b/i.test(field("limited_release_label_claim"))&&field("barrel_number"))expression="Family Estate";
   if(/^Smaller Casks\s*[•·-]\s*Bolder Flavou?rs$/i.test(expression))expression="";
   const parts=[brand];
   if(!wine){
