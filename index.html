@@ -174,4 +174,6 @@ $("extraFiles").onchange=async()=>{
 };
 await supabase.auth.initialize();
 await refreshAuth();
+</script><footer style="text-align:center;color:var(--muted);font-size:.76rem;padding:12px 8px 22px">Warehouse website commit: <a id="siteCommit" href="https://github.com/WaldenL/warehouse-george-app/commits/main" style="color:var(--muted)">loading…</a></footer><script>
+fetch("./version.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("missing version");return r.json()}).then(v=>{if(!/^[0-9a-f]{40}$/.test(v.commit))throw Error("invalid version");const a=document.getElementById("siteCommit");a.textContent=v.commit.slice(0,12);a.href="https://github.com/WaldenL/warehouse-george-app/commit/"+v.commit}).catch(()=>{document.getElementById("siteCommit").textContent="unavailable"});
 </script></main></body></html>
