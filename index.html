@@ -104,7 +104,7 @@ function renderDossier(extraction,bottle){
  for(const [heading,names] of observationGroups){
   const rows=names.filter(k=>facts[k]?.value).map(k=>{
    const o=facts[k];const ref="Photo"+(o.photos.length===1?" ":"s ")+o.photos.join(", ");
-   return '<div class="fact"><span class="fact-key">'+esc(factLabel(k))+'</span><span class="fact-value">'+esc(o.value)+'</span><div class="tiny">'+esc(ref+" · "+o.basis)+"</div><div class="tiny">'+esc(o.evidence_text)+'</div></div>';
+   return '<div class="fact"><span class="fact-key">'+esc(factLabel(k))+'</span><span class="fact-value">'+esc(o.value)+'</span><div class="tiny">'+esc(ref+" · "+o.basis)+"</div><div class='tiny'>"+esc(o.evidence_text)+'</div></div>';
   }).join("");
   if(rows)html+='<div class="dossier-section"><h3>'+esc(heading)+'</h3><div class="fact-grid">'+rows+'</div></div>';
  }
