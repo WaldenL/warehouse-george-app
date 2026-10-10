@@ -11,6 +11,7 @@ ENV NUMBA_DISABLE_JIT=1 \
 ARG GIT_COMMIT=unknown
 ENV WAREHOUSE_GENERATOR_COMMIT=${GIT_COMMIT}
 COPY app.py ${LAMBDA_TASK_ROOT}/app.py
+COPY search.py ${LAMBDA_TASK_ROOT}/search.py
 COPY prompts/ ${LAMBDA_TASK_ROOT}/prompts/
 COPY schemas/ ${LAMBDA_TASK_ROOT}/schemas/
 CMD ["app.handler"]
