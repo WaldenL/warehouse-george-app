@@ -144,6 +144,8 @@ class CatalogThumbnailTests(unittest.TestCase):
     @patch.object(worker, "storage")
     @patch.object(worker.requests, "post")
     def test_front_only_extraction_is_valid(self, post, storage):
+        self.brief["front_photo_numbers"] = [1]
+        self.brief["canonical_photo_numbers"] = [1]
         self.brief["back_photo_numbers"] = []
         self.brief["back_identity_anchors"] = []
         payload = {"schema_version": "warehouse_visual_observations_v2",
@@ -165,6 +167,7 @@ class CatalogThumbnailTests(unittest.TestCase):
     @patch.object(worker, "storage")
     @patch.object(worker.requests, "post")
     def test_same_photo_cannot_be_front_and_back(self, post, storage):
+        self.brief["canonical_photo_numbers"] = [1]
         self.brief["front_photo_numbers"] = [1]
         self.brief["back_photo_numbers"] = [1]
         payload = {"schema_version": "warehouse_visual_observations_v2",
