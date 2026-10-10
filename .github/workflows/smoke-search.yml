@@ -27,7 +27,7 @@ jobs:
       - name: Interpret sample searches (read-only)
         run: |
           set -euo pipefail
-          for q in "Show me my 100 proof bourbons that aren't locked" "Find my 2019 Chardonnays"; do
+          for q in "Show me my 100 proof bourbons that aren't locked" "Find my 2019 Chardonnays" "Show me my wines"; do
             QUERY="$q" python3 - <<'PY'
           import json,os
           with open("search-request.json","w") as f:
@@ -55,8 +55,10 @@ jobs:
               assert filters["category"].lower().find("bourbon")>=0,filters
               assert filters["proof_exact"]==100,filters
               assert filters["locked"] is False,filters
-          else:
+          elif "Chardonnays" in os.environ["QUERY"]:
               assert filters["vintage"]==2019,filters
               assert filters["grape"].lower()=="chardonnay",filters
+          else:
+              assert "wine" in str(filters.get("category") or filters.get("text") or "").lower(),filters
           PY
           done
