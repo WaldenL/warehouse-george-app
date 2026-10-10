@@ -1,7 +1,7 @@
 import os, json, io, uuid, re, traceback, hashlib
 from datetime import datetime, timezone
 import requests
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
 from rembg import remove, new_session
 
 TIMEOUT=40
@@ -39,7 +39,18 @@ def prep(cfg,run,media,session):
     # On failure, retain the photograph with its background and continue extraction.
     try:
         cut=remove(photo,session=session)
-        rgba=cut.convert("RGBA")
+        # Preserve original pixels within a solid outer silhouette. Glass may
+        # reveal the background optically, but must not become transparent.
+        alpha=cut.convert("RGBA").getchannel("A")
+        binary=alpha.point(lambda v: 255 if v>=8 else 0)
+        padded=ImageOps.expand(binary,border=1,fill=0)
+        holes=ImageOps.invert(padded)
+        ImageDraw.floodfill(holes,(0,0),0,thresh=0)
+        solid=ImageChops.lighter(padded,holes).crop((1,1,binary.width+1,binary.height+1))
+        # Expand the full silhouette by 8 pixels, then feather its edge by 1 px.
+        mask=solid.filter(ImageFilter.MaxFilter(17)).filter(ImageFilter.GaussianBlur(1))
+        rgba=photo.convert("RGBA")
+        rgba.putalpha(mask)
         # Crop only transparent margin; retain a 4% safety margin around visible pixels.
         alpha=rgba.getchannel("A")
         bounds=alpha.point(lambda v:255 if v>=8 else 0).getbbox()
