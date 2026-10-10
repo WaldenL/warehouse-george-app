@@ -113,7 +113,7 @@ function renderDossier(extraction,bottle){
  $("bottleDossier").innerHTML=html||'<p class="muted">No extracted observations yet.</p>';
 }
 async function openBottle(id){
- const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
+ const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).is("removed_at",null).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
  if(b.error||m.error||r.error){alert(b.error?.message||m.error?.message||r.error?.message);return}
  currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
  const d=b.data.data||{};$("editTitle").value=d.identity?.product_name==="Pending visual identification"?"":(d.identity?.product_name||"");$("editSticker").value=b.data.label_number??"";$("editNotes").value=d.notes||"";$("editDetails").value=Object.entries(d.verified_facts||{}).map(([k,v])=>k+" = "+v).join("\n");$("researchInstructions").value=d.research?.instructions||"";$("researchDetails").textContent=d.research?.status&&d.research.status!=="none"?"Status: "+d.research.status+" · Requested: "+(d.research.requested_at||"unknown"):"No research requested.";
@@ -128,7 +128,22 @@ async function openBottle(id){
  img.onclick=()=>showImage(path);p.append(img);
  const actions=document.createElement("div");actions.className="row";const btn=document.createElement("button");btn.textContent="Original";btn.onclick=()=>showImage(media.object_path);actions.append(btn);
  if(media.working_path){const workingButton=document.createElement("button");workingButton.textContent="Working";workingButton.onclick=()=>showImage(media.working_path);actions.append(workingButton);}
- const prim=document.createElement("button");prim.textContent=b.data.data?.processing?.primary_media_id===media.id?"Primary ✓":"Set primary";prim.onclick=async()=>{const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:media.id}};const u=await supabase.from("bottles").update({data}).eq("id",id);if(u.error)alert(u.error.message);else await openBottle(id)};actions.append(prim);p.append(actions);$("gallery").append(p);
+ const prim=document.createElement("button");prim.textContent=b.data.data?.processing?.primary_media_id===media.id?"Primary ✓":"Set primary";prim.onclick=async()=>{const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:media.id}};const u=await supabase.from("bottles").update({data}).eq("id",id);if(u.error)alert(u.error.message);else await openBottle(id)};actions.append(prim);
+ const remove=document.createElement("button");remove.textContent="Remove photo";remove.title="Remove from this bottle without deleting archival files";remove.onclick=async()=>{
+  if(!confirm("Remove "+(media.original_filename||"this photo")+" from this bottle? The original stays archived, and existing extraction results will not change. Processing will NOT run automatically."))return;
+  remove.disabled=true;
+  const update=await supabase.from("media").update({removed_at:new Date().toISOString()}).eq("id",media.id).eq("bottle_id",id).is("removed_at",null);
+  if(update.error){alert("Could not remove photo: "+update.error.message);remove.disabled=false;return;}
+  const remaining=mediaCache.filter(x=>x.id!==media.id);
+  if(currentBottle.data?.processing?.primary_media_id===media.id){
+   const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:remaining[0]?.id||null}};
+   const bUpdate=await supabase.from("bottles").update({data}).eq("id",id);
+   if(bUpdate.error)alert("Photo removed, but primary photo could not be reassigned: "+bUpdate.error.message);
+  }
+  await openBottle(id);
+  status("detailStatus","Photo removed from active gallery. Originals and past extractions are preserved; no processing was started.");
+ };
+ actions.append(remove);p.append(actions);$("gallery").append(p);
  }
  $("runs").replaceChildren();for(const run of runCache){const item=document.createElement("div");item.className="card";item.innerHTML='<strong>'+esc(run.status)+' · '+esc(run.schema_version||"pending")+'</strong><div class="tiny">'+esc(new Date(run.created_at).toLocaleString())+' · '+esc(run.model||"")+' · '+esc(run.error_message||"")+'</div>';const button=document.createElement("button");button.textContent="View extraction";button.onclick=()=>showRun(run);item.append(button);$("runs").append(item)}
  const latestRun=runCache[0],lastSuccessful=runCache.find(x=>x.status==="completed");
