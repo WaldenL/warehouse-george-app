@@ -101,7 +101,15 @@ $("create").onclick=async()=>{
 async function loadInventory(){
  const r=await supabase.from("bottles").select("id,label_number,data,created_at").order("created_at",{ascending:false});
  if(r.error){$("bottleList").textContent=r.error.message;return}
- const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_summary||b.data?.identity||{};const title=(b.data?.identity?.product_name&&b.data.identity.product_name!=="Pending visual identification"?b.data.identity.product_name:"")||[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const isAI=!!(b.data?.processing?.generated_thumbnail_path||b.data?.processing?.generated_back_thumbnail_path);const src=publicThumb(b.data?.processing?.generated_thumbnail_path||b.data?.processing?.generated_back_thumbnail_path||b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="'+(isAI?'AI-generated catalog depiction':'Photo-derived bottle thumbnail')+'">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span>'+(isAI?'<span class="tiny">AI catalog depiction</span>':'')+'</span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
+ const list=r.data||[];
+ $("bottleList").innerHTML=list.map(b=>{
+  const x=b.data?.processing?.extracted_summary||b.data?.identity||{};
+  const manualName=b.data?.identity?.product_name;
+  const title=(manualName&&manualName!=="Pending visual identification"?manualName:"")||[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";
+  const src=publicThumb(b.data?.processing?.generated_thumbnail_path||b.data?.processing?.generated_back_thumbnail_path||b.data?.processing?.thumbnail_path);
+  return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="Bottle catalog image">':"")+
+   '<span><span class="name">'+esc(title)+'</span>'+(b.label_number?'<span class="tiny">Warehouse #'+esc(b.label_number)+'</span>':"")+'</span></button>';
+ }).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
  $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
 }
 const signedImageCache=new Map();
@@ -244,7 +252,7 @@ async function showRun(run){
 $("saveRecord").onclick=async()=>{if(!currentBottle)return;$("saveRecord").disabled=true;try{
  const verified={};for(const raw of $("editDetails").value.split("\n")){if(!raw.trim())continue;const pos=raw.indexOf("=");if(pos<1)throw Error("Use field = value on every verified-fact line.");const key=raw.slice(0,pos).trim();if(!/^[a-z][a-z0-9_]*$/i.test(key))throw Error("Invalid field name: "+key);verified[key]=raw.slice(pos+1).trim();}
  const label=$("editSticker").value.trim(),title=$("editTitle").value.trim(),data={...currentBottle.data,notes:$("editNotes").value,verified_facts:verified,identity:{...(currentBottle.data.identity||{}),product_name:title||"Pending visual identification"}};
- const {error}=await supabase.from("bottles").update({data,label_number:label?Number(label):null}).eq("id",currentBottle.id);if(error)throw Error(error.message);status("editStatus","Saved.");await openBottle(currentBottle.id);
+ const {error}=await supabase.from("bottles").update({data,label_number:label?Number(label):null}).eq("id",currentBottle.id);if(error)throw Error(error.message);status("editStatus","Saved.");await openBottle(currentBottle.id);await loadInventory();
  }catch(e){status("editStatus",e.message,true)}finally{$("saveRecord").disabled=false}};
 $("requestResearch").onclick=async()=>{if(!currentBottle)return;const instructions=$("researchInstructions").value.trim();if(!instructions){status("researchStatus","Enter a research question or instruction first.",true);return}const data={...currentBottle.data,research:{status:"pending",instructions,requested_at:new Date().toISOString()},attributes:{...(currentBottle.data.attributes||{}),warehouse_research_request:{status:"pending",instructions,requested_at:new Date().toISOString()}}};const {error}=await supabase.from("bottles").update({data}).eq("id",currentBottle.id);if(error){status("researchStatus",error.message,true);return}status("researchStatus","Research request saved as pending for Dusty George (not automatically dispatched).");await openBottle(currentBottle.id)};
 $("reprocess").onclick=async()=>{
