@@ -10,7 +10,7 @@ const examples=[
   [{brand:"CHÂTEAU BOUSCASSÉ",vintage_year:"2019",grape_varieties:"Petit Courbu, Petit Manseng",appellation:"APPELLATION PACHERENC DU VIC-BILH SEC CONTRÔLÉE"},"Château Bouscassé 2019"],
   [{brand:"Willett",expression:"Family Estate Bottled Single Barrel Bourbon",subcategory:"Straight Kentucky Bourbon Whiskey",stated_age:"9 yrs",barrel_number:"4246",private_selection_label_text:"HENRI'S SELECT"},"Willett Family Estate 9 Year Old — Henri's Select"],
   [{brand:"Willett",category:"Bourbon",expression:"Family Estate Bottled Single Barrel Bourbon",stated_age:"6 Years",barrel_number:"4242",private_selection_label_text:"50/56"},"Willett Family Estate 6 Year Old — Barrel #4242"],
-  [{brand:"Willett",category:"Bourbon",stated_age:"6",barrel_number:"4242",private_selection_name:'Elijah\'s Disciples "First Supper"'},"Willett 6 Year Old — Elijah's Disciples “First Supper”"]
+  [{brand:"Willett",category:"Bourbon",stated_age:"6",barrel_number:"4242",limited_release_label_claim:"Rare Release",private_selection_name:'Elijah\'s Disciples "First Supper"'},"Willett Family Estate 6 Year Old — Elijah's Disciples “First Supper”"]
 ];
 
 test("all eight existing inventory records have concise, distinct display names",()=>{
