@@ -447,7 +447,7 @@ def enrich(event):
                 identity["visual_observations"]=runs[0]["extraction_json"].get("observations",[])
         payload={"model":"gpt-5.6","store":False,"max_output_tokens":5000,
                  "tools":[{"type":"web_search"}],
-                 "text":{"format":{"type":"json_schema","name":"warehouse_enrichment_v1","strict":True,"schema":ENRICHMENT_SCHEMA}},
+                 "text":{"format":{"type":"json_schema","name":"warehouse_enrichment_v2","strict":True,"schema":ENRICHMENT_SCHEMA}},
                  "input":[{"role":"user","content":[{"type":"input_text","text":ENRICHMENT_PROMPT+"\\n\\nIDENTIFIED BOTTLE:\\n"+json.dumps(identity,ensure_ascii=False,indent=2)}]}]}
         response=requests.post("https://api.openai.com/v1/responses",
             headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},
@@ -467,7 +467,7 @@ def enrich(event):
             params={"id":"eq."+rid})
         output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
         parsed=json.loads(output)
-        if parsed.get("schema_version")!="warehouse_enrichment_v1":raise ValueError("Enrichment schema version mismatch")
+        if parsed.get("schema_version")!="warehouse_enrichment_v2":raise ValueError("Enrichment schema version mismatch")
         researched_at=now()
         enrichment={**parsed,"researched_at":researched_at,"model":result.get("model","gpt-5.6"),
                     "prompt_version":"sha256:"+hashlib.sha256(ENRICHMENT_PROMPT.encode("utf-8")).hexdigest()[:16],
