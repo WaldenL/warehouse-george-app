@@ -12,6 +12,8 @@ ASSET_DIR=Path(__file__).resolve().parent
 EXTRACTION_PROMPT=(ASSET_DIR / "prompts" / "warehouse_visual_extraction.md").read_text(encoding="utf-8")
 EXTRACTION_SCHEMA=json.loads((ASSET_DIR / "schemas" / "warehouse_visual.json").read_text(encoding="utf-8"))
 THUMBNAIL_PROMPT=(ASSET_DIR / "prompts" / "warehouse_thumbnail_generation.md").read_text(encoding="utf-8")
+ENRICHMENT_PROMPT=(ASSET_DIR / "prompts" / "warehouse_enrichment.md").read_text(encoding="utf-8")
+ENRICHMENT_SCHEMA=json.loads((ASSET_DIR / "schemas" / "warehouse_enrichment.json").read_text(encoding="utf-8"))
 PRICING_SOURCE="https://platform.openai.com/pricing/"
 PRICING_DATE="2026-10-10"
 # Standard (non-Batch) USD per million tokens. Snapshot each run's rates.
@@ -333,9 +335,62 @@ def process(event):
         state="failed"
         api(cfg,"PATCH","bottle_processing_runs",{"status":state,"error_message":str(err)[:1000]},params={"id":"eq."+rid})
         return {"generator_commit":GENERATOR_COMMIT,"status":state,"id":rid,"error":str(err)[:500]}
+
+def enrich(event):
+    cfg=secret()
+    rid=event.get("enrichment_run_id")
+    uuid.UUID(rid)
+    found=api(cfg,"GET","bottle_enrichment_runs",params={"id":"eq."+rid,"select":"*"})
+    if len(found)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"not_found","id":rid}
+    run=found[0]
+    if run["status"]!="queued":return {"generator_commit":GENERATOR_COMMIT,"status":"not_claimable","id":rid,"current_status":run["status"]}
+    claimed=api(cfg,"PATCH","bottle_enrichment_runs",{"status":"processing","started_at":now()},
+        params={"id":"eq."+rid,"status":"eq.queued","select":"id"})
+    if len(claimed)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"claimed_elsewhere","id":rid}
+    try:
+        bottles=api(cfg,"GET","bottles",params={"id":"eq."+run["bottle_id"],"select":"id,label_number,data"})
+        if len(bottles)!=1:raise RuntimeError("Bottle unavailable")
+        bottle=bottles[0]; data=bottle.get("data") or {}
+        identity={"label_number":bottle.get("label_number"),"inventory_domain":data.get("inventory_domain"),
+                  "identity":data.get("identity") or {},"specification":data.get("specification") or {},
+                  "origin":data.get("origin") or {},"verified_facts":data.get("verified_facts") or {}}
+        latest=(data.get("processing") or {}).get("latest_run_id")
+        if latest:
+            runs=api(cfg,"GET","bottle_processing_runs",params={"id":"eq."+latest,"select":"extraction_json"})
+            if runs and runs[0].get("extraction_json"):
+                identity["visual_observations"]=runs[0]["extraction_json"].get("observations",[])
+        payload={"model":"gpt-5.6","store":False,"max_output_tokens":5000,
+                 "tools":[{"type":"web_search"}],
+                 "text":{"format":{"type":"json_schema","name":"warehouse_enrichment_v1","strict":True,"schema":ENRICHMENT_SCHEMA}},
+                 "input":[{"role":"user","content":[{"type":"input_text","text":ENRICHMENT_PROMPT+"\\n\\nIDENTIFIED BOTTLE:\\n"+json.dumps(identity,ensure_ascii=False,indent=2)}]}]}
+        response=requests.post("https://api.openai.com/v1/responses",
+            headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},
+            json=payload,timeout=(20,240))
+        response.raise_for_status(); result=response.json()
+        output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
+        parsed=json.loads(output)
+        if parsed.get("schema_version")!="warehouse_enrichment_v1":raise ValueError("Enrichment schema version mismatch")
+        researched_at=now()
+        enrichment={**parsed,"researched_at":researched_at,"model":result.get("model","gpt-5.6"),
+                    "prompt_version":"sha256:"+hashlib.sha256(ENRICHMENT_PROMPT.encode("utf-8")).hexdigest()[:16],
+                    "run_id":rid}
+        data["enrichment"]=enrichment
+        api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
+        api(cfg,"PATCH","bottle_enrichment_runs",
+            {"status":"completed","model":result.get("model","gpt-5.6"),"prompt_version":enrichment["prompt_version"],
+             "enrichment_json":parsed,"sources_json":parsed.get("sources",[]),"usage_json":result.get("usage",{}),
+             "completed_at":researched_at,"error_message":None},params={"id":"eq."+rid})
+        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"bottle_id":run["bottle_id"]}
+    except Exception as err:
+        print(traceback.format_exc())
+        api(cfg,"PATCH","bottle_enrichment_runs",{"status":"failed","error_message":str(err)[:1000],"completed_at":now()},params={"id":"eq."+rid})
+        return {"generator_commit":GENERATOR_COMMIT,"status":"failed","id":rid,"error":str(err)[:500]}
+
 def handler(event,context):
     event=event or {}
     if event.get("action")=="interpret_bottle_search":
         from search import interpret_search
         return interpret_search(event,secret())
+    if event.get("action")=="enrich_bottle" or event.get("enrichment_run_id"):
+        return enrich(event)
     return process(event)
