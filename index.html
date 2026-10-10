@@ -16,11 +16,11 @@
 <p id="searchInterpretation" class="muted search-summary"></p>
 <div id="bottleList" class="bottles"></div>
 <div id="inventoryPaging" class="row inventory-paging hidden"><button id="prevPage" type="button">← Previous</button><span id="pageInfo" class="tiny"></span><button id="nextPage" type="button">Next →</button></div></section>
-<section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="additionalInstructions">Additional instructions for visual extraction (optional)</label><textarea id="additionalInstructions" placeholder="For example: focus on the handwritten barrel number. Treat this as context, not proof of what is visible."></textarea><label for="primary">Primary photo</label><select id="primary"></select><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
-<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny" style="flex:1"></span><button id="refreshDetail" type="button">Refresh</button></div><section class="card"><div class="hero"><div class="catalog-views"><div class="catalog-view"><img id="detailThumb" alt="Front catalog depiction"><span class="tiny" id="frontCaption">Front</span></div><div class="catalog-view hidden" id="backCatalogView"><img id="detailBackThumb" alt="Back catalog depiction"><span class="tiny">Back · AI depiction</span></div></div><div style="min-width:0;flex:1"><div class="name-heading"><h2 id="detailName"></h2><button id="editName" type="button" aria-label="Edit bottle name">Edit name</button><button id="toggleLock" type="button">Lock bottle</button></div><div id="detailLockStatus" class="hidden"><span class="lock-tag">🔒 Locked · do not open</span></div><div id="nameEditor" class="name-editor hidden"><label for="editTitle">Bottle name (leave blank to use extracted identity)</label><input id="editTitle" placeholder="Enter the preferred bottle name"><div class="row"><button id="saveName" type="button" class="primary">Save name</button><button id="cancelName" type="button">Cancel</button></div><p id="nameStatus" class="status"></p></div><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div><div class="row"><button id="viewGenerated" class="hidden">View full front</button><button id="viewGeneratedBack" class="hidden">View full back</button><button id="toggleThumb" class="hidden">Show photo thumbnail</button></div><div class="row"><button id="reprocess">Reprocess from originals</button><button id="addPhotos">Add photographs</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div></div></div><div id="detailStatus" class="status"></div></section>
+<section id="add" class="card hidden"><h2>Photograph a new bottle</h2><p class="muted">Upload photographs, queue the bottle, then start the next one. The server processes images and extracts details independently of this browser.</p><label for="files">Bottle photographs</label><input type="file" id="files" accept="image/*" multiple><label for="sticker">Warehouse inventory sticker (optional; enter manually)</label><input id="sticker" type="number" min="1" placeholder="Your label number, if assigned"><label for="additionalInstructions">Additional instructions for visual extraction (optional)</label><textarea id="additionalInstructions" placeholder="For example: focus on the handwritten barrel number. Treat this as context, not proof of what is visible."></textarea><div class="row"><button id="create" class="primary">Upload and queue bottle</button></div><p id="addStatus" class="status"></p></section>
+<section id="detail" class="hidden"><div class="row"><button id="back">← Inventory</button><span id="detailId" class="tiny" style="flex:1"></span><button id="refreshDetail" type="button">Refresh</button></div><section class="card"><div class="hero"><div class="catalog-views"><div class="catalog-view"><img id="detailThumb" alt="Front catalog depiction"><span class="tiny" id="frontCaption">Front</span></div><div class="catalog-view hidden" id="backCatalogView"><img id="detailBackThumb" alt="Back catalog depiction"><span class="tiny">Back · AI depiction</span></div></div><div style="min-width:0;flex:1"><div class="name-heading"><h2 id="detailName"></h2><button id="editName" type="button" aria-label="Edit bottle name">Edit name</button><button id="toggleLock" type="button">Lock bottle</button></div><div id="detailLockStatus" class="hidden"><span class="lock-tag">🔒 Locked · do not open</span></div><div id="nameEditor" class="name-editor hidden"><label for="editTitle">Bottle name (leave blank to use extracted identity)</label><input id="editTitle" placeholder="Enter the preferred bottle name"><div class="row"><button id="saveName" type="button" class="primary">Save name</button><button id="cancelName" type="button">Cancel</button></div><p id="nameStatus" class="status"></p></div><div id="detailSummary" class="muted"></div><div id="thumbnailInfo" class="tiny muted"></div></div></div><div id="detailStatus" class="status"></div></section>
 <section class="card"><h2>Inventory record</h2><p class="muted">Your edits are saved separately from photograph-derived observations.</p><label for="editSticker">Warehouse sticker number</label><input id="editSticker" type="number" min="1"><label for="editState">Bottle status</label><select id="editState"><option value="uncertain">Uncertain</option><option value="sealed">Sealed</option><option value="open">Open</option><option value="removed">Removed</option></select><p class="tiny">Only bottles explicitly marked Open display an Open tag in the inventory.</p><label for="editNotes">Notes</label><textarea id="editNotes" placeholder="Acquisition, condition, personal notes"></textarea><label for="editDetails">Verified facts (one field = value per line)</label><textarea id="editDetails" placeholder="barrel_number = 4242&#10;vintage_year = 1986"></textarea><div class="row"><button id="saveRecord" class="primary">Save record</button></div><p id="editStatus" class="status"></p><h3>Research</h3><p class="muted">Queue a research request for Dusty George. This does not automatically conduct web research.</p><textarea id="researchInstructions" placeholder="What should Dusty investigate?"></textarea><div class="row"><button id="requestResearch">Request research</button></div><p id="researchStatus" class="status"></p><div id="researchDetails" class="muted"></div></section>
 <section class="card"><h2>Bottle dossier</h2><p class="dossier-note">Photograph-derived observations are preliminary and not verified inventory facts. Unknown fields are omitted; original evidence remains available below.</p><div id="bottleDossier"></div></section>
-<section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div id="gallery" class="photo-grid"></div></section>
+<section class="card"><h2>Photographic record</h2><p class="muted">Working photographs are shown by default. Background removal only occurs when enabled during processing. Original opens the untouched archival photograph.</p><div class="row"><button id="addPhotos" type="button">Add photographs</button><button id="reprocess" type="button">Reprocess from originals</button><input id="extraFiles" type="file" multiple accept="image/*" class="hidden"></div><div id="gallery" class="photo-grid"></div></section>
 <section class="card"><details id="rawExtraction"><summary>Complete generator JSON</summary><div id="cost" class="muted"></div><pre id="extraction">No completed extraction yet.</pre></details></section>
 <section class="card"><h2>Processing history</h2><div id="runs"></div></section></section></div>
 <dialog id="passwordDialog"><form id="passwordForm"><h2>Set or change password</h2><p class="muted">Choose a password of at least 12 characters. This works for an existing signed-in Warehouse account; it does not create a new account.</p><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><label for="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required><p id="passwordStatus" class="status"></p><div class="row"><button type="submit" class="primary">Save password</button><button type="button" id="closePassword">Cancel</button></div></form></dialog>
@@ -112,7 +112,6 @@ const authParams=new URLSearchParams(location.search);
 const authHash=new URLSearchParams(location.hash.replace(/^#/,""));
 const authError=authParams.get("error_description")||authHash.get("error_description")||authParams.get("error")||authHash.get("error");
 if(authError)status("loginStatus","Sign-in link error: "+authError,true);
-$("files").onchange=()=>{const files=[...$("files").files];$("primary").replaceChildren(...files.map((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=(i+1)+". "+f.name;return o;}))};
 async function storeOriginals(bottleId,files,mode="append"){
  const records=[];
  for(let i=0;i<files.length;i++){const f=files[i];const path="bottles/"+bottleId+"/originals/"+crypto.randomUUID()+"-"+fileName(f.name);
@@ -140,11 +139,11 @@ $("create").onclick=async()=>{
   const label=$("sticker").value.trim();const inserted=await supabase.from("bottles").insert({label_number:label?Number(label):null,data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},processing:{status:"pending"}}}).select("id").single();
   if(inserted.error)throw Error(inserted.error.message);bottleId=inserted.data.id;
   const media=await storeOriginals(bottleId,files,"add");
-  const primaryId=media[Number($("primary").value)||0].id;
+  const primaryId=media[0].id; // Internal fallback; AI selects its own catalog image sources.
   const extra=$("additionalInstructions").value.trim();const update=await supabase.from("bottles").update({data:{schema_version:1,inventory_domain:"Bottle inventory",identity:{product_name:"Pending visual identification"},state:{status:"uncertain"},notes:"",verified_facts:{},research:{status:"none"},processing:{status:"pending",primary_media_id:primaryId,additional_instructions:extra}}}).eq("id",bottleId);
   if(update.error)throw Error(update.error.message);
   await queueBottle(bottleId,media);
-  $("files").value="";$("sticker").value="";$("additionalInstructions").value="";$("primary").replaceChildren();status("addStatus","Bottle submitted. The server will process it; you can upload the next bottle.");await loadInventory();tab("add");
+  $("files").value="";$("sticker").value="";$("additionalInstructions").value="";status("addStatus","Bottle submitted. The server will process it; you can upload the next bottle.");await loadInventory();tab("add");
  }catch(e){status("addStatus","Ingestion stopped: "+e.message+(bottleId?" · Bottle ID: "+bottleId:""),true);if(bottleId)await openBottle(bottleId);}
  finally{$("create").disabled=false}
 };
@@ -240,33 +239,24 @@ async function openBottle(id){
  const frontResult=generation?.front||generation,backResult=generation?.back;
  const fullFrontPath=frontResult?.status==="completed"?frontResult.full_image_path:null;
  const fullBackPath=backResult?.status==="completed"?backResult.full_image_path:null;
- let showingGenerated=!!generatedUrl;
- const setHeroThumbnail=()=>{
-  const url=showingGenerated?generatedUrl:photoUrl;
-  $("detailThumb").src=url||"";$("detailThumb").style.visibility=url?"visible":"hidden";
-  $("frontCaption").textContent=showingGenerated?"Front · AI depiction":"Photo thumbnail";
-  const missingBack=backResult?.status==="not_available"?"No back photograph supplied":backResult?.status==="failed"?"Back generation failed":"Back not generated in this run";
-  $("thumbnailInfo").textContent=showingGenerated?"AI-generated catalog images are illustrative, not photographic evidence"+(backUrl?"":" · "+missingBack):(generation?.status==="failed"?"Photo-derived fallback · AI generation failed":"Photo-derived thumbnail");
-  $("toggleThumb").textContent=showingGenerated?"Show photo thumbnail":"Show AI front";
- };
+ const showingGenerated=!!generatedUrl;
+ const heroUrl=generatedUrl||photoUrl;
+ $("detailThumb").src=heroUrl||"";
+ $("detailThumb").style.visibility=heroUrl?"visible":"hidden";
+ $("frontCaption").textContent=showingGenerated?"Front · AI depiction":"Photo thumbnail";
+ const missingBack=backResult?.status==="not_available"?"No back photograph supplied":backResult?.status==="failed"?"Back generation failed":"Back not generated in this run";
+ $("thumbnailInfo").textContent=showingGenerated?"AI-generated catalog images are illustrative, not photographic evidence"+(backUrl?"":" · "+missingBack):(generation?.status==="failed"?"Photo-derived fallback · AI generation failed":"Photo-derived thumbnail");
  $("backCatalogView").classList.toggle("hidden",!backUrl);
  $("detailBackThumb").src=backUrl||"";
+ // Catalog images remain clickable to show their full-resolution views.
  $("detailBackThumb").onclick=()=>{if(fullBackPath)showImage(fullBackPath).catch(e=>alert(e.message))};
  $("detailThumb").onclick=()=>{if(showingGenerated&&fullFrontPath)showImage(fullFrontPath).catch(e=>alert(e.message))};
- $("toggleThumb").classList.toggle("hidden",!generatedUrl||!photoUrl);
- $("toggleThumb").onclick=()=>{showingGenerated=!showingGenerated;setHeroThumbnail()};
- $("viewGenerated").classList.toggle("hidden",!fullFrontPath);
- $("viewGenerated").onclick=()=>{if(fullFrontPath)showImage(fullFrontPath).catch(e=>alert("Could not open generated image: "+e.message))};
- $("viewGeneratedBack").classList.toggle("hidden",!fullBackPath);
- $("viewGeneratedBack").onclick=()=>{if(fullBackPath)showImage(fullBackPath).catch(e=>alert("Could not open generated back: "+e.message))};
- setHeroThumbnail();
  $("gallery").replaceChildren();for(const [i,media] of mediaCache.entries()){
  const p=document.createElement("div");p.className="photo";p.innerHTML='<strong>Photo '+(i+1)+' · '+(media.working_path?'Working image':'Original only')+'</strong>';
  const img=document.createElement("img");img.alt=media.working_path?"Processed working photograph":"Archived original photograph";const path=media.working_path||media.object_path;try{img.src=await signedImage(path)}catch{}
  img.onclick=()=>showImage(path);p.append(img);
  const actions=document.createElement("div");actions.className="row";const btn=document.createElement("button");btn.textContent="Original";btn.onclick=()=>showImage(media.object_path);actions.append(btn);
  if(media.working_path){const workingButton=document.createElement("button");workingButton.textContent="Working";workingButton.onclick=()=>showImage(media.working_path);actions.append(workingButton);}
- const prim=document.createElement("button");prim.textContent=b.data.data?.processing?.primary_media_id===media.id?"Primary ✓":"Set primary";prim.onclick=async()=>{const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:media.id}};const u=await supabase.from("bottles").update({data}).eq("id",id);if(u.error)alert(u.error.message);else await openBottle(id)};actions.append(prim);
  const remove=document.createElement("button");remove.textContent="Remove photo";remove.title="Remove from this bottle without deleting archival files";remove.onclick=async()=>{
   if(!confirm("Remove "+(media.original_filename||"this photo")+" from this bottle? The original stays archived, and existing extraction results will not change. Processing will NOT run automatically."))return;
   remove.disabled=true;
@@ -276,7 +266,7 @@ async function openBottle(id){
   if(currentBottle.data?.processing?.primary_media_id===media.id){
    const data={...currentBottle.data,processing:{...(currentBottle.data.processing||{}),primary_media_id:remaining[0]?.id||null}};
    const bUpdate=await supabase.from("bottles").update({data}).eq("id",id);
-   if(bUpdate.error)alert("Photo removed, but primary photo could not be reassigned: "+bUpdate.error.message);
+   if(bUpdate.error)alert("Photo removed, but the internal fallback photo could not be reassigned: "+bUpdate.error.message);
   }
   await openBottle(id);
   status("detailStatus","Photo removed from active gallery. Originals and past extractions are preserved; no processing was started.");
