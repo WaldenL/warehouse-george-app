@@ -394,11 +394,11 @@ def enrich(event):
     cfg=secret()
     rid=event.get("enrichment_run_id")
     uuid.UUID(rid)
-    found=api(cfg,"GET","bottle_enrichment_runs",params={"id":"eq."+rid,"select":"*"})
+    found=api(cfg,"GET","bottle_processing_runs",params={"id":"eq."+rid,"run_type":"eq.research_enrichment","select":"*"})
     if len(found)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"not_found","id":rid}
     run=found[0]
     if run["status"]!="queued":return {"generator_commit":GENERATOR_COMMIT,"status":"not_claimable","id":rid,"current_status":run["status"]}
-    claimed=api(cfg,"PATCH","bottle_enrichment_runs",{"status":"processing","started_at":now()},
+    claimed=api(cfg,"PATCH","bottle_processing_runs",{"status":"processing","started_at":now()},
         params={"id":"eq."+rid,"status":"eq.queued","select":"id"})
     if len(claimed)!=1:return {"generator_commit":GENERATOR_COMMIT,"status":"claimed_elsewhere","id":rid}
     try:
@@ -421,6 +421,25 @@ def enrich(event):
             headers={"Authorization":"Bearer "+cfg["OPENAI_API_KEY"],"Content-Type":"application/json"},
             json=payload,timeout=(20,240))
         response.raise_for_status(); result=response.json()
+        # Archive the complete provider response immediately, before schema validation.
+        raw_path=f"runs/aws/{rid}/enrichment-response.json"
+        storage(cfg,"POST","warehouse-media",raw_path,json.dumps({
+            "generator_commit":GENERATOR_COMMIT,"request":payload,
+            "response":result,"received_at":now()
+        },ensure_ascii=False).encode("utf-8"),"application/json")
+        usage=result.get("usage") or {}
+        web_calls=sum(1 for item in result.get("output",[]) if item.get("type")=="web_search_call")
+        # Pricing must be checked for the exact billed model; unverified model rates
+        # are not silently represented as dollars.
+        cost={"status":"unavailable","estimated_total_usd":None,"currency":"USD",
+              "reason":"Exact gpt-5.6 model token rates not verified",
+              "pricing_source":PRICING_SOURCE,"pricing_date":PRICING_DATE,
+              "web_search_calls":web_calls,"web_search_estimated_usd":round(web_calls*0.01,8),
+              "web_search_pricing_usd_per_call":0.01,
+              "token_usage":usage,"model":result.get("model","gpt-5.6")}
+        api(cfg,"PATCH","bottle_processing_runs",
+            {"model":result.get("model","gpt-5.6"),"usage_json":usage,"cost_json":cost},
+            params={"id":"eq."+rid})
         output="\\n".join(part.get("text","") for item in result.get("output",[]) for part in item.get("content",[]) if part.get("type")=="output_text")
         parsed=json.loads(output)
         if parsed.get("schema_version")!="warehouse_enrichment_v1":raise ValueError("Enrichment schema version mismatch")
@@ -430,11 +449,11 @@ def enrich(event):
                     "run_id":rid}
         data["enrichment"]=enrichment
         api(cfg,"PATCH","bottles",{"data":data},params={"id":"eq."+run["bottle_id"]})
-        api(cfg,"PATCH","bottle_enrichment_runs",
+        api(cfg,"PATCH","bottle_processing_runs",
             {"status":"completed","model":result.get("model","gpt-5.6"),"prompt_version":enrichment["prompt_version"],
-             "enrichment_json":parsed,"sources_json":parsed.get("sources",[]),"usage_json":result.get("usage",{}),
+             "enrichment_json":parsed,"sources_json":parsed.get("sources",[]),"usage_json":usage,"cost_json":cost,
              "completed_at":researched_at,"error_message":None},params={"id":"eq."+rid})
-        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"bottle_id":run["bottle_id"]}
+        return {"generator_commit":GENERATOR_COMMIT,"status":"completed","id":rid,"bottle_id":run["bottle_id"],"cost_json":cost}
     except Exception as err:
         print(traceback.format_exc())
         api(cfg,"PATCH","bottle_enrichment_runs",{"status":"failed","error_message":str(err)[:1000],"completed_at":now()},params={"id":"eq."+rid})
