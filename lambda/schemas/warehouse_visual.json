@@ -12,7 +12,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
-        "warehouse_visual_observations_v1"
+        "warehouse_visual_observations_v2"
       ]
     },
     "observations": {
@@ -137,7 +137,13 @@
         "identity_anchors",
         "optional_anchors",
         "simplifications_allowed",
-        "notes"
+        "notes",
+        "front_photo_numbers",
+        "back_photo_numbers",
+        "front_identity_anchors",
+        "back_identity_anchors",
+        "front_notes",
+        "back_notes"
       ],
       "properties": {
         "strategy": {
@@ -179,6 +185,42 @@
           }
         },
         "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "front_photo_numbers": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "back_photo_numbers": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "front_identity_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "back_identity_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "front_notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "back_notes": {
           "type": [
             "string",
             "null"
