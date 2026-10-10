@@ -2,6 +2,7 @@
 import base64
 import importlib.util
 import io
+import json
 import sys
 import types
 import unittest
@@ -139,6 +140,46 @@ class CatalogThumbnailTests(unittest.TestCase):
         self.assertEqual(result["back"]["status"], "failed")
         self.assertIsNone(result["cost_json"]["estimated_total_usd"])
         self.assertEqual(result["cost_json"]["known_estimated_usd"], 0.05696)
+
+    @patch.object(worker, "storage")
+    @patch.object(worker.requests, "post")
+    def test_front_only_extraction_is_valid(self, post, storage):
+        self.brief["back_photo_numbers"] = []
+        self.brief["back_identity_anchors"] = []
+        payload = {"schema_version": "warehouse_visual_observations_v2",
+                   "observations": [], "label_transcriptions": [],
+                   "uncertainties": [], "thumbnail_brief": self.brief}
+        response = post.return_value
+        response.json.return_value = {
+            "output": [{"content": [{"type": "output_text",
+                                    "text": json.dumps(payload)}]}],
+            "usage": {"input_tokens": 100, "output_tokens": 200},
+        }
+        image = io.BytesIO()
+        self.photos[0].save(image, "PNG")
+        storage.return_value = image.getvalue()
+        parsed, usage, _ = worker.extract(self.cfg, self.run, ["front.png"])
+        self.assertEqual(parsed["thumbnail_brief"]["back_photo_numbers"], [])
+        self.assertEqual(usage["output_tokens"], 200)
+
+    @patch.object(worker, "storage")
+    @patch.object(worker.requests, "post")
+    def test_same_photo_cannot_be_front_and_back(self, post, storage):
+        self.brief["front_photo_numbers"] = [1]
+        self.brief["back_photo_numbers"] = [1]
+        payload = {"schema_version": "warehouse_visual_observations_v2",
+                   "observations": [], "label_transcriptions": [],
+                   "uncertainties": [], "thumbnail_brief": self.brief}
+        response = post.return_value
+        response.json.return_value = {
+            "output": [{"content": [{"type": "output_text",
+                                    "text": json.dumps(payload)}]}],
+        }
+        image = io.BytesIO()
+        self.photos[0].save(image, "PNG")
+        storage.return_value = image.getvalue()
+        with self.assertRaisesRegex(ValueError, "disjoint"):
+            worker.extract(self.cfg, self.run, ["front.png"])
 
     def test_image_pricing_snapshot(self):
         cost = worker.image_generation_cost({
