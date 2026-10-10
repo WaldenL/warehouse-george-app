@@ -1,4 +1,4 @@
-Warehouse Visual Extraction 
+Warehouse Visual Extraction
 
 All photos show the SAME physical wine or spirits bottle. Integrate fragments across views. VISUAL evidence only: no research, no historical assumptions or valuation. Preserve original label wording separately from interpretations, with photo numbers in evidence and label_transcriptions. For each meaningful assertion use evidence entries with 1-based photo numbers.
 
