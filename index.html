@@ -82,41 +82,43 @@ $("create").onclick=async()=>{
 async function loadInventory(){
  const r=await supabase.from("bottles").select("id,label_number,data,created_at").order("created_at",{ascending:false});
  if(r.error){$("bottleList").textContent=r.error.message;return}
- const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_identity||b.data?.identity||{};const title=[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const src=publicThumb(b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span></span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
+ const list=r.data||[];$("bottleList").innerHTML=list.map(b=>{const x=b.data?.processing?.extracted_summary||b.data?.identity||{};const title=[x.brand,x.expression||x.product_name].filter(Boolean).join(" · ")||"Unidentified bottle";const src=publicThumb(b.data?.processing?.thumbnail_path);return '<button class="bottle" data-id="'+esc(b.id)+'">'+(src?'<img src="'+esc(src)+'" loading="lazy" alt="">':"")+'<span><span class="name">'+esc(title)+'</span><span class="tiny"> '+esc(b.label_number?"Warehouse #"+b.label_number:"No Warehouse sticker")+'</span></span></button>'}).join("")||'<p class="muted">No bottles yet. Add your first bottle to begin.</p>';
  $("bottleList").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openBottle(b.dataset.id));
 }
 const signedImageCache=new Map();
 async function signedImage(path){const item=signedImageCache.get(path);if(item&&item.expiresAt>Date.now())return item.url;const r=await supabase.storage.from("warehouse-media").createSignedUrl(path,3600);if(r.error)throw Error(r.error.message);signedImageCache.set(path,{url:r.data.signedUrl,expiresAt:Date.now()+55*60*1000});return r.data.signedUrl}
 async function showImage(path){$("large").src=await signedImage(path);$("viewer").showModal()}
 $("closeViewer").onclick=()=>$("viewer").close();
-const displayValue=v=>v===null||v===undefined||v===""||(typeof v==="string"&&["not_seen","not_visible"].includes(v.toLowerCase()))||(Array.isArray(v)&&!v.length)?"":Array.isArray(v)?v.join(", "):typeof v==="boolean"?(v?"Yes":"No"):String(v);
-function dossierSection(title,items){
- const rows=items.filter(([label,value])=>displayValue(value)!=="").map(([label,value])=>'<div class="fact"><span class="fact-key">'+esc(label)+'</span><span class="fact-value">'+esc(displayValue(value))+'</span></div>');
- return rows.length?'<div class="dossier-section"><h3>'+esc(title)+'</h3><div class="fact-grid">'+rows.join("")+'</div></div>':"";
-}
+const obsMap=e=>Object.fromEntries((e?.observations||[]).map(o=>[o.field,o]));
+const observationGroups=[
+ ["Identity",["brand","expression","packaging_designation","category","subcategory","country","region","producer_label_text"]],
+ ["Production and release",["distillery_label_text","bottler_label_text","importer_label_text","distilled_and_bottled_by_label_text","distilled_year","barreled_year","bottled_year","vintage_year","release_year","stated_age","barrel_number","batch_number","cask_type","finish"]],
+ ["Specifications",["abv_percent","volume","bottled_in_bond","grape_varieties","appellation","other_specifications"]],
+ ["Identifiers",["warehouse_label_number","producer_bottle_number","tax_stamp_numbers","government_markings","manufacturer_codes","unclassified_numbers"]],
+ ["Distinctive features",["private_selection_name","private_selection_label_text","limited_release_label_claim","other_label_claims","distinctive_features"]],
+ ["Observed condition",["fill_level_description","seal_status","closure_description","label_condition","glass_condition","packaging_condition"]]
+];
+const factLabel=k=>k.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase()).replace("Abv","ABV");
 function renderDossier(extraction,bottle){
- const d=bottle.data||{}, e=extraction||{}, i=e.identity||{},p=e.production||{},s=e.specification||{},n=e.identifiers||{},f=e.special_features||{},c=e.condition||{};
- const sections=[
- dossierSection("Identity",[["Brand",i.brand||d.identity?.brand],["Expression",i.expression||d.identity?.product_name],["Packaging designation",i.packaging_designation],["Category",i.category||d.identity?.category],["Type",i.subcategory],["Country",i.country],["Region",i.region],["Producer (label)",i.producer_label_text||d.identity?.producer]]),
- dossierSection("Production & release",[["Distillery (label)",p.distillery_label_text],["Bottler (label)",p.bottler_label_text],["Importer (label)",p.importer_label_text],["Distilled and bottled by",p.distilled_and_bottled_by_label_text],["Distilled",p.distilled_year],["Barreled",p.barreled_year],["Bottled",p.bottled_year],["Vintage",p.vintage_year],["Release year",p.release_year],["Stated age",p.stated_age_text|| (p.stated_age_years!=null?p.stated_age_years+" years":null)],["Barrel",p.barrel_number],["Batch",p.batch_number],["Cask",p.cask_type],["Finish",p.finish]]),
- dossierSection("Specifications",[["ABV",s.abv_percent!=null?s.abv_percent+"%"+(s.abv_source&&s.abv_source!=="unknown"?" ("+s.abv_source+")":""):null],["Bottle volume",s.volume??s.volume_label_text??(s.volume_ml!=null?s.volume_ml+" mL":null)],["Bottled in Bond",s.bottled_in_bond],["Appellation",s.appellation],["Grape varieties",s.grape_varieties],["Other specifications",s.other_specifications]]),
- dossierSection("Numbers & identification",[["Warehouse sticker (verified entry)",bottle.label_number],["Sticker number observed in photos",n.warehouse_label_number],["Sticker confidence",n.warehouse_sticker_confidence],["Producer bottle number",n.producer_bottle_number],["Tax stamp numbers",n.tax_stamp_numbers],["Government markings",n.government_markings],["Manufacturer codes",n.manufacturer_codes],["Unclassified numbers",n.unclassified_numbers]]),
- dossierSection("Distinctive features",[["Private selection",f.private_selection_name],["Selection label text",f.private_selection_label_text],["Limited-release claim",f.limited_release_label_claim],["Other label claims",f.other_label_claims],["Distinctive features",f.distinctive_features]]),
- dossierSection("Observed condition",[["Fill level",c.fill_level_description],["Seal",c.seal_status],["Closure",c.closure_description],["Label",c.label_condition],["Glass",c.glass_condition],["Packaging",c.packaging_condition],["Condition uncertainties",c.condition_uncertainties]])
- ];
- const list=(title,arr,fn)=>Array.isArray(arr)&&arr.length?'<div class="dossier-section"><h3>'+esc(title)+'</h3><ul class="evidence-list">'+arr.map(fn).join("")+'</ul></div>':"";
- sections.push(list("Label transcriptions",e.label_transcriptions,x=>'<li><strong>Photo '+esc(x.photo_number)+'</strong>: '+esc(x.text||"")+(x.notes?' <span class="muted">('+esc(x.notes)+')</span>':"")+'</li>'));
- sections.push(list("Photographic evidence",e.evidence,x=>'<li><strong>'+esc(x.field||"Observation")+'</strong>: '+esc(x.value||"")+' <span class="muted">('+esc(x.basis||"unknown")+'; photo'+(x.photos?.length>1?"s ":" ")+esc((x.photos||[]).join(", "))+')</span></li>'));
- sections.push(list("Uncertainties",e.uncertainties,x=>'<li>'+esc(x)+'</li>'));
- $("bottleDossier").innerHTML=sections.filter(Boolean).join("")||'<p class="muted">No visual extraction available yet. The original photographs and processing history are preserved.</p>';
+ const facts=obsMap(extraction);let html="";
+ for(const [heading,names] of observationGroups){
+  const rows=names.filter(k=>facts[k]?.value).map(k=>{
+   const o=facts[k];const ref="Photo"+(o.photos.length===1?" ":"s ")+o.photos.join(", ");
+   return '<div class="fact"><span class="fact-key">'+esc(factLabel(k))+'</span><span class="fact-value">'+esc(o.value)+'</span><div class="tiny">'+esc(ref+" · "+o.basis)+"</div><div class="tiny">'+esc(o.evidence_text)+'</div></div>';
+  }).join("");
+  if(rows)html+='<div class="dossier-section"><h3>'+esc(heading)+'</h3><div class="fact-grid">'+rows+'</div></div>';
+ }
+ if(extraction?.uncertainties?.length)html+='<div class="dossier-section"><h3>Uncertainties</h3><ul class="evidence-list">'+extraction.uncertainties.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>';
+ if(extraction?.label_transcriptions?.length)html+='<details><summary>Label transcriptions</summary><ul class="evidence-list">'+extraction.label_transcriptions.map(x=>'<li><strong>Photo '+esc(x.photo_number)+'</strong>: '+esc(x.text)+'</li>').join("")+'</ul></details>';
+ $("bottleDossier").innerHTML=html||'<p class="muted">No extracted observations yet.</p>';
 }
 async function openBottle(id){
  const [b,m,r]=await Promise.all([supabase.from("bottles").select("*").eq("id",id).single(),supabase.from("media").select("*").eq("bottle_id",id).order("created_at"),supabase.from("bottle_processing_runs").select("*").eq("bottle_id",id).order("created_at",{ascending:false})]);
  if(b.error||m.error||r.error){alert(b.error?.message||m.error?.message||r.error?.message);return}
  currentBottle=b.data;mediaCache=m.data;runCache=r.data;tab("detail");$("detailId").textContent=id;
- const extract=runCache.find(x=>x.status==="completed")?.extraction_json||b.data.data?.processing?.extracted_identity;
+ const extract=runCache.find(x=>x.status==="completed")?.extraction_json;
  renderDossier(extract,b.data);
- const ident=extract?.identity||extract||{};$("detailName").textContent=[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
+ const facts=obsMap(extract);const ident={brand:facts.brand?.value,expression:facts.expression?.value,category:facts.category?.value,region:facts.region?.value};$("detailName").textContent=[ident.brand,ident.expression].filter(Boolean).join(" · ")||"Unidentified bottle";
  $("detailSummary").textContent=[ident.category,ident.region,b.data.label_number?"Warehouse #"+b.data.label_number:""].filter(Boolean).join(" · ");
  const publicUrl=publicThumb(b.data.data?.processing?.thumbnail_path);$("detailThumb").src=publicUrl||"";$("detailThumb").style.visibility=publicUrl?"visible":"hidden";
  $("gallery").replaceChildren();for(const [i,media] of mediaCache.entries()){
